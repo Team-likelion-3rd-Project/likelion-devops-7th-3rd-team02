@@ -1,6 +1,85 @@
 # DevFlow Backend
 
-DevFlow 프로젝트의 Backend 애플리케이션입니다.
+> 프로젝트·팀원·업무(Task)를 관리하는 **DevFlow의 REST API 서버**입니다. JWT 인증과 프로젝트 단위 권한 검증을 제공하고, Kubernetes 운영을 위한 Health/Prometheus 엔드포인트를 노출합니다.
+
+| 항목 | 내용 |
+|---|---|
+| 기간 | 2026.08 ~ 2026.11 (멋쟁이사자처럼 클라우드 엔지니어링 부트캠프 2차 → 3차 프로젝트) |
+| 담당 | Backend 전담 (`backend/` 전체 설계·구현) |
+| 팀 구성 · 인프라 | 팀 구성과 AWS/EKS/Terraform, CI/CD, 모니터링 구성은 [루트 README](../README.md) 참고 (팀원 담당) |
+
+## 한눈에 보기
+
+- **인증**: Spring Security + JWT(jjwt 0.12) Stateless 인증. `JwtAuthenticationFilter`(OncePerRequestFilter)에서 토큰을 검증
+- **권한**: 프로젝트 생성자를 `OWNER`로 자동 등록하고, 팀원 등록은 OWNER만 허용. Task 조회·생성·수정은 프로젝트 멤버만, 담당자는 프로젝트 멤버 중에서만 지정 가능
+- **데이터**: PostgreSQL 17 + Spring Data JPA. `(project_id, user_id)`와 `email`에 유니크 제약
+- **공통 처리**: `ApiResponse` / `ErrorResponse` 응답 포맷, `ErrorCode` 기반 `GlobalExceptionHandler`
+- **운영 연동**: Actuator health · liveness · readiness · prometheus 엔드포인트 노출 (K8s Probe와 Prometheus 수집용)
+- **검증**: Postman Collection 기반 API 통합 테스트 ([`postman/`](../postman/DevFlow-Backend.postman_collection.json))
+- **환경 분리**: `local`(ddl-auto: update) / `dev` · `prod`(ddl-auto: validate) 프로필, 비밀값은 환경변수로 주입
+
+## 도메인 모델
+
+```mermaid
+erDiagram
+    USERS ||--o{ PROJECTS : owns
+    USERS ||--o{ PROJECT_MEMBERS : joins
+    PROJECTS ||--o{ PROJECT_MEMBERS : has
+    PROJECTS ||--o{ TASKS : contains
+    USERS |o--o{ TASKS : "assigned to"
+
+    USERS {
+        bigint id PK
+        string email UK
+        string password
+        string name
+    }
+    PROJECTS {
+        bigint id PK
+        string name
+        string description
+        bigint owner_id FK
+    }
+    PROJECT_MEMBERS {
+        bigint id PK
+        bigint project_id FK
+        bigint user_id FK
+        enum role "OWNER | MEMBER"
+    }
+    TASKS {
+        bigint id PK
+        string title
+        string description
+        enum status "TODO | IN_PROGRESS | DONE"
+        bigint project_id FK
+        bigint assignee_id FK
+    }
+```
+
+## 요청 처리 흐름
+
+```mermaid
+flowchart LR
+    C["Client"] --> F["JwtAuthenticationFilter<br/>Bearer 토큰 검증"]
+    F --> CT["Controller"]
+    CT --> S["Service<br/>프로젝트 멤버·OWNER 권한 검증"]
+    S --> R["JPA Repository"] --> DB[("PostgreSQL")]
+    S -. "BusinessException(ErrorCode)" .-> H["GlobalExceptionHandler<br/>ErrorResponse"]
+```
+
+## 패키지 구조
+
+```text
+com.devflow
+├─ auth      # 회원가입, 로그인 (JWT 발급)
+├─ user      # 내 정보 조회
+├─ project   # 프로젝트 생성·조회
+├─ member    # 프로젝트 팀원 등록·조회, ProjectRole
+├─ task      # Task 생성·조회·상태/담당자 변경, TaskStatus
+└─ global    # security, jwt, exception, response, config(Swagger), BaseTimeEntity
+```
+
+---
 
 ## Tech Stack
 
