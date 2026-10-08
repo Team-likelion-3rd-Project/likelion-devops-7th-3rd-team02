@@ -1,6 +1,6 @@
 import type { BadgeTone } from '../components/common/StatusBadge'
 import type { DeploymentStatus } from '../types/deployment'
-import type { TaskStatus } from '../types/task'
+import type { PullRequestStatus, TaskStatus } from '../types/task'
 
 interface StatusMeta {
   label: string
@@ -20,3 +20,12 @@ export const DEPLOYMENT_STATUS: Record<DeploymentStatus, StatusMeta> = {
   FAILED: { label: '실패', tone: 'err' },
   IN_PROGRESS: { label: '배포 중', tone: 'info' },
 }
+
+// 설계서 4.5 PR 배지: 열림 / 리뷰 중 / 머지됨 (병합=merged 색)
+export const PULL_REQUEST_STATUS: Record<PullRequestStatus, StatusMeta> = {
+  OPEN: { label: '열림', tone: 'info' },
+  IN_REVIEW: { label: '리뷰 중', tone: 'info' },
+  MERGED: { label: '머지됨', tone: 'merged' },
+}
+
+export const TASK_STATUS_ORDER: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE']

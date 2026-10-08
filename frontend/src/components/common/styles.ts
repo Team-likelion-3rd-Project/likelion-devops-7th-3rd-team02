@@ -9,3 +9,6 @@ export const buttonClass = `${buttonBase} border-line bg-transparent font-medium
 export const primaryButtonClass = `${buttonBase} border-fill bg-fill font-semibold text-onfill hover:brightness-108 disabled:hover:brightness-100`
 
 export const textLinkClass = `text-[13px] text-accent hover:underline ${focusRing}`
+
+// 시안 input/select: 높이 36px, 배경 page, radius 8px
+export const fieldClass = `h-9 min-w-0 rounded-lg border border-line bg-page px-3 text-ink placeholder:text-muted ${focusRing}`
