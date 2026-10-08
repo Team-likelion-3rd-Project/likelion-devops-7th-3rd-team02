@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 
-import logoMark from '../../assets/logo-mark.svg'
+import BrandLogo from './BrandLogo'
 import { useProjectContext } from '../../hooks/useProjectContext'
 import { clearAuthStorage } from '../../utils/authStorage'
 import { PROJECT_ROLE_LABEL } from '../../utils/projectRole'
@@ -36,10 +36,7 @@ function Sidebar() {
 
   return (
     <aside className="flex w-[228px] flex-none flex-col gap-5 border-r border-line bg-chrome px-3.5 py-5 max-[900px]:hidden">
-      <div className="flex items-center gap-2.5 px-2 text-[17px] font-bold tracking-[-0.01em]">
-        <img src={logoMark} alt="" className="h-7 w-7" />
-        DevFlow
-      </div>
+      <BrandLogo className="px-2" />
 
       {currentProject && (
         <div className="rounded-[10px] border border-line bg-page px-3 py-2.5">
