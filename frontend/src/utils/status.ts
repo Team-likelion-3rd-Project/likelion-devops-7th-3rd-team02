@@ -1,5 +1,6 @@
 import type { BadgeTone } from '../components/common/StatusBadge'
 import type { DeploymentStatus } from '../types/deployment'
+import type { IncidentSeverity } from '../types/incident'
 import type { PipelineStageName, PipelineStatus } from '../types/pipeline'
 import type { PullRequestStatus, TaskStatus } from '../types/task'
 
@@ -53,3 +54,18 @@ export const PIPELINE_STAGES: { name: PipelineStageName; label: string; runningL
   { name: 'VERIFY', label: 'Verify', runningLabel: '검증 중' },
   { name: 'DEPLOY', label: 'Deploy', runningLabel: '배포 중' },
 ]
+
+// 장애 심각도 (시안: 경고, 긴급). 값은 확정 전 가정 (types/incident.ts)
+export const INCIDENT_SEVERITY: Record<IncidentSeverity, StatusMeta> = {
+  CRITICAL: { label: '긴급', tone: 'err' },
+  WARNING: { label: '경고', tone: 'warn' },
+  INFO: { label: '정보', tone: 'info' },
+}
+
+// 파드 상태는 Kubernetes 표기를 그대로 보여주고 색만 나눈다.
+export const podStatusTone = (status: string): BadgeTone => {
+  if (status === 'Running' || status === 'Succeeded') return 'ok'
+  if (status === 'Pending' || status === 'ContainerCreating') return 'warn'
+  if (status === 'Unknown') return 'muted'
+  return 'err'
+}
