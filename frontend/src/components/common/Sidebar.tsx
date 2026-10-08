@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 
 import BrandLogo from './BrandLogo'
 import ProfileModal from './ProfileModal'
+import MemberModal from '../project/MemberModal'
 import ThemeToggle from './ThemeToggle'
 import { useProjectContext } from '../../hooks/useProjectContext'
 import { clearAuthStorage } from '../../utils/authStorage'
@@ -25,6 +26,14 @@ function Sidebar() {
   const navigate = useNavigate()
   const { currentProject, currentUser } = useProjectContext()
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isMemberOpen, setIsMemberOpen] = useState(false)
+
+  // 응답의 role을 쓰고, Backend 반영 전에는 2차 방식(ownerId 비교)으로 대신한다 (설계서 2.3).
+  const isOwner = currentProject
+    ? currentProject.role
+      ? currentProject.role === 'OWNER'
+      : currentProject.ownerId === currentUser?.userId
+    : false
 
   const projectId = currentProject?.id
   const projectMenus = [
@@ -42,15 +51,21 @@ function Sidebar() {
     <aside className="flex w-[228px] flex-none flex-col gap-5 border-r border-line bg-chrome px-3.5 py-5 max-[900px]:hidden">
       <BrandLogo className="px-2" />
 
+      {/* 프로젝트 박스를 누르면 팀원 목록 (설계서 10.4 결정) */}
       {currentProject && (
-        <div className="rounded-[10px] border border-line bg-page px-3 py-2.5">
-          <b className="block font-semibold">{currentProject.name}</b>
+        <button
+          type="button"
+          onClick={() => setIsMemberOpen(true)}
+          aria-label={`${currentProject.name} 팀원 보기`}
+          className={`cursor-pointer rounded-[10px] border border-line bg-page px-3 py-2.5 text-left hover:border-accent ${focusRing}`}
+        >
+          <b className="block truncate font-semibold">{currentProject.name}</b>
           {currentProject.role && (
             <span className="text-[12px] text-muted">
               내 역할: {PROJECT_ROLE_LABEL[currentProject.role]}
             </span>
           )}
-        </div>
+        </button>
       )}
 
       <nav className="flex flex-col gap-0.5">
@@ -102,6 +117,14 @@ function Sidebar() {
 
         <ThemeToggle />
       </div>
+      {isMemberOpen && currentProject && (
+        <MemberModal
+          project={currentProject}
+          isOwner={isOwner}
+          onClose={() => setIsMemberOpen(false)}
+        />
+      )}
+
       {isProfileOpen && currentUser && (
         <ProfileModal user={currentUser} onClose={() => setIsProfileOpen(false)} />
       )}
