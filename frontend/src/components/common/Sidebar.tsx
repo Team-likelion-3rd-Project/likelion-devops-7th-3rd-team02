@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 
 import BrandLogo from './BrandLogo'
+import ThemeToggle from './ThemeToggle'
 import { useProjectContext } from '../../hooks/useProjectContext'
 import { clearAuthStorage } from '../../utils/authStorage'
 import { PROJECT_ROLE_LABEL } from '../../utils/projectRole'
@@ -75,15 +76,21 @@ function Sidebar() {
         )}
       </nav>
 
-      <div className="mt-auto border-t border-line2 px-2 pt-3.5 text-[13px]">
-        {currentUser && <b className="block font-semibold">{currentUser.name}</b>}
-        <button
-          type="button"
-          onClick={handleLogout}
-          className={`mt-2 inline-block cursor-pointer text-[12px] text-muted underline ${focusRing}`}
-        >
-          로그아웃
-        </button>
+      <div className="mt-auto flex items-end justify-between gap-2 border-t border-line2 px-2 pt-3.5 text-[13px]">
+        <div className="min-w-0">
+          {currentUser && (
+            <b className="block truncate font-semibold">{currentUser.name}</b>
+          )}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={`mt-2 inline-block cursor-pointer text-[12px] text-muted underline ${focusRing}`}
+          >
+            로그아웃
+          </button>
+        </div>
+
+        <ThemeToggle />
       </div>
     </aside>
   )

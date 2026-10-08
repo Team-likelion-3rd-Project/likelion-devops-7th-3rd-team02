@@ -1,13 +1,18 @@
 import type { ReactNode } from 'react'
 
 import BrandLogo from '../common/BrandLogo'
+import ThemeToggle from '../common/ThemeToggle'
 
 const FLOW_STEPS = ['작업', 'PR', '빌드', '배포', '상태']
 
 // 설계서 4.2, 9.1: 왼쪽 서비스 소개와 작업→PR→빌드→배포→상태 흐름, 오른쪽 폼
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-wrap bg-page text-ink">
+    <div className="relative flex min-h-screen flex-wrap bg-page text-ink">
+      <div className="absolute top-5 right-6 z-10">
+        <ThemeToggle />
+      </div>
+
       <section className="flex flex-[1_1_560px] flex-col justify-between border-r border-line bg-chrome px-16 py-14">
         <BrandLogo className="px-2" />
 

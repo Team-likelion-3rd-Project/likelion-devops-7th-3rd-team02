@@ -9,6 +9,23 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // 저장된 선택 → 시스템 설정 순으로 테마를 먼저 정한다 (src/utils/theme.ts와 같은 키)
+      ;(function () {
+        var theme = 'light'
+        try {
+          var saved = localStorage.getItem('devflow-theme')
+          theme =
+            saved === 'light' || saved === 'dark'
+              ? saved
+              : matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+        } catch (e) {}
+        document.documentElement.dataset.theme = theme
+        document.documentElement.style.colorScheme = theme
+      })()
+    </script>
     <title>DevFlow</title>
   </head>
   <body>
