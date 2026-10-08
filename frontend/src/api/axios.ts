@@ -13,6 +13,15 @@ const api = axios.create({
   },
 })
 
+// 목 모드 (npm run dev:mock): Backend 없이 화면을 확인하려고 가짜 응답을 쓴다.
+// 일반 개발·배포 빌드에서는 이 분기가 빠지고 목 코드도 번들에 들어가지 않는다.
+if (import.meta.env.MODE === 'mock') {
+  api.defaults.adapter = async (config) => {
+    const { mockAdapter } = await import('../mocks/mockApi')
+    return mockAdapter(config)
+  }
+}
+
 api.interceptors.request.use((config) => {
   const accessToken = getAccessToken()
   const tokenType = getTokenType()

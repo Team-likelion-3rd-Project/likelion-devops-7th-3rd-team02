@@ -2,7 +2,7 @@ import type { Deployment, DeploymentListResponse, PageParams } from '../types/de
 import type { GithubRepository, GitlabIntegration } from '../types/integration'
 import type { Pipeline, PipelineListResponse, PipelineStage } from '../types/pipeline'
 
-// Backend 구현 전 임시 데이터. API가 들어오면 hooks에서 api/ 호출로 바꾸고 이 파일을 지운다.
+// 목 모드(mocks/mockApi.ts)가 쓰는 임시 데이터. Backend 구현 후 목 모드가 필요 없으면 지운다.
 const at = (minutesAgo: number) =>
   new Date(Date.now() - minutesAgo * 60 * 1000).toISOString()
 

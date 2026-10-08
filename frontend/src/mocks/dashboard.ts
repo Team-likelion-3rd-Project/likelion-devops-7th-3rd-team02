@@ -1,7 +1,7 @@
 import type { DeploymentListResponse } from '../types/deployment'
 import type { Incident } from '../types/incident'
 
-// Backend 구현 전 임시 데이터. API가 들어오면 hooks에서 api/ 호출로 바꾸고 이 파일을 지운다.
+// 목 모드(mocks/mockApi.ts)가 쓰는 임시 데이터. Backend 구현 후 목 모드가 필요 없으면 지운다.
 const minutesAgo = (minutes: number) =>
   new Date(Date.now() - minutes * 60 * 1000).toISOString()
 
