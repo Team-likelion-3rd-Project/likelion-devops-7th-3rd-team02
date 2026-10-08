@@ -1,3 +1,5 @@
+import { setLoggedInUser } from './loggedInUser'
+
 const ACCESS_TOKEN_KEY = 'accessToken'
 const TOKEN_TYPE_KEY = 'tokenType'
 
@@ -32,4 +34,5 @@ export const removeTokenType = () => {
 export const clearAuthStorage = () => {
   removeAccessToken()
   removeTokenType()
+  setLoggedInUser(null)
 }

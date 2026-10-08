@@ -10,6 +10,7 @@ import FormNotice from '../components/auth/FormNotice'
 import { focusRing, primaryButtonClass } from '../components/auth/authStyles'
 import { setAccessToken, setTokenType } from '../utils/authStorage'
 import { getErrorMessage } from '../utils/error'
+import { setLoggedInUser } from '../utils/loggedInUser'
 
 // 설계서 4.2 로그인 화면. GitHub 로그인(P3)은 구현 전이라 버튼을 표시하지 않는다.
 function LoginPage() {
@@ -47,7 +48,8 @@ function LoginPage() {
       setTokenType(tokenType)
 
       // 설계서 3.2: 토큰 저장 → 현재 사용자 확인 → 대시보드 이동
-      await getMe()
+      const meResponse = await getMe()
+      setLoggedInUser(meResponse.data.data)
 
       navigate('/projects')
     } catch (error) {

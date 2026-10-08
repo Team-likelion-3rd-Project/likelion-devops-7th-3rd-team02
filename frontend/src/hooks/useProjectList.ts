@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { getProjects } from '../api/projectApi'
 import { getMe } from '../api/userApi'
 import { getErrorMessage } from '../utils/error'
+import { getLoggedInUser } from '../utils/loggedInUser'
 import type { ProjectListItem } from '../types/project'
 import type { UserMe } from '../types/user'
 
@@ -16,12 +17,18 @@ export function useProjectList() {
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getProjects(), getMe()])
-      .then(([projectResponse, userResponse]) => {
+    // 로그인 직후에는 로그인 화면에서 확인한 사용자를 쓰고, 새로고침 시에는 다시 조회한다.
+    const loggedInUser = getLoggedInUser()
+    const userRequest = loggedInUser
+      ? Promise.resolve(loggedInUser)
+      : getMe().then((response) => response.data.data ?? null)
+
+    Promise.all([getProjects(), userRequest])
+      .then(([projectResponse, user]) => {
         if (cancelled) return
 
         setProjectList(projectResponse.data.data ?? [])
-        setCurrentUser(userResponse.data.data ?? null)
+        setCurrentUser(user)
         setError('')
       })
       .catch((error) => {
