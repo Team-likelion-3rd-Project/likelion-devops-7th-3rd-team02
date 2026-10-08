@@ -1,5 +1,6 @@
 import type { BadgeTone } from '../components/common/StatusBadge'
 import type { DeploymentStatus } from '../types/deployment'
+import type { PipelineStageName, PipelineStatus } from '../types/pipeline'
 import type { PullRequestStatus, TaskStatus } from '../types/task'
 
 interface StatusMeta {
@@ -29,3 +30,26 @@ export const PULL_REQUEST_STATUS: Record<PullRequestStatus, StatusMeta> = {
 }
 
 export const TASK_STATUS_ORDER: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE']
+
+// 현재 배포 패널 표기 (시안: 정상 실행 중)
+export const CURRENT_DEPLOYMENT_STATUS: Record<DeploymentStatus, StatusMeta> = {
+  SUCCESS: { label: '정상 실행 중', tone: 'ok' },
+  FAILED: { label: '실패', tone: 'err' },
+  IN_PROGRESS: { label: '배포 중', tone: 'info' },
+}
+
+// 파이프라인 상태 (시안 이력 표: 진행 중 / 성공 / 실패). 상태 값은 확정 전 가정 (types/pipeline.ts)
+export const PIPELINE_STATUS: Record<PipelineStatus, StatusMeta> = {
+  RUNNING: { label: '진행 중', tone: 'info' },
+  SUCCESS: { label: '성공', tone: 'ok' },
+  FAILED: { label: '실패', tone: 'err' },
+  PENDING: { label: '대기', tone: 'muted' },
+}
+
+export const PIPELINE_STAGES: { name: PipelineStageName; label: string; runningLabel: string }[] = [
+  { name: 'BUILD', label: 'Build', runningLabel: '빌드 중' },
+  { name: 'TEST', label: 'Test', runningLabel: '테스트 중' },
+  { name: 'IMAGE', label: 'Image', runningLabel: '이미지 생성 중' },
+  { name: 'VERIFY', label: 'Verify', runningLabel: '검증 중' },
+  { name: 'DEPLOY', label: 'Deploy', runningLabel: '배포 중' },
+]

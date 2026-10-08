@@ -12,3 +12,7 @@ export const textLinkClass = `text-[13px] text-accent hover:underline ${focusRin
 
 // 시안 input/select: 높이 36px, 배경 page, radius 8px
 export const fieldClass = `h-9 min-w-0 rounded-lg border border-line bg-page px-3 text-ink placeholder:text-muted ${focusRing}`
+
+// 시안 table: th 12.5px muted, 셀 여백 18px, 내부 구분선 line2
+export const thClass = 'border-b border-line2 px-[18px] py-2.5 text-left text-[12.5px] font-medium text-muted'
+export const tdClass = 'border-b border-line2 px-[18px] py-3 align-middle'

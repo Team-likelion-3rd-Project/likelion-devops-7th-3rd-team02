@@ -1,6 +1,123 @@
-// 화면 본문은 해당 화면 작업 때 구현한다.
+import { useParams } from 'react-router-dom'
+
+import CurrentDeploymentPanel from '../components/cicd/CurrentDeploymentPanel'
+import DeploymentTable from '../components/cicd/DeploymentTable'
+import IntegrationPanel from '../components/cicd/IntegrationPanel'
+import PipelineStrip from '../components/cicd/PipelineStrip'
+import PipelineTable from '../components/cicd/PipelineTable'
+import { connectGithub, connectGitlab } from '../api/integrationApi'
+import { CICD_PAGE_SIZE, useCicdData } from '../hooks/useCicdData'
+import { formatClock } from '../utils/date'
+
+// 설계서 4.7 CI/CD (조회 전용: 승인·롤백 버튼, 작성자 없음)
+function CicdContent({ projectId }: { projectId: number }) {
+  const {
+    github,
+    gitlab,
+    latestPipeline,
+    latestDeployment,
+    pipelines,
+    pipelinePage,
+    setPipelinePage,
+    deployments,
+    deploymentPage,
+    setDeploymentPage,
+    collectedAt,
+  } = useCicdData(projectId)
+
+  // 파이프라인·배포는 GitLab 프로젝트에서 가져오므로 GitLab 연결 전에는 안내만 표시한다 (설계서 9.7).
+  const isGitlabConnected = gitlab.data !== null
+
+  return (
+    <>
+      <div className="mb-5">
+        <h1 className="text-[24px] font-bold tracking-[-0.02em]">CI/CD</h1>
+        {collectedAt && isGitlabConnected && (
+          <p className="mt-1 text-[13px] text-muted">마지막 수집 {formatClock(collectedAt)}</p>
+        )}
+      </div>
+
+      <div className="mb-5 grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-5 max-[1100px]:grid-cols-1">
+        <CurrentDeploymentPanel
+          deployment={latestDeployment.data ? (latestDeployment.data.deployments[0] ?? null) : undefined}
+          isLoading={latestDeployment.isLoading}
+          error={latestDeployment.error}
+          onRetry={latestDeployment.reload}
+          isConnected={isGitlabConnected}
+        />
+
+        <IntegrationPanel
+          github={{
+            value: github.data === null ? null : github.data?.fullName,
+            isLoading: github.isLoading,
+            error: github.error,
+            onRetry: github.reload,
+            onConnect: async (repositoryUrl) => {
+              await connectGithub(projectId, { repositoryUrl })
+              github.reload()
+            },
+          }}
+          gitlab={{
+            value: gitlab.data === null ? null : gitlab.data?.projectPath,
+            isLoading: gitlab.isLoading,
+            error: gitlab.error,
+            onRetry: gitlab.reload,
+            onConnect: async (projectPath) => {
+              await connectGitlab(projectId, { projectPath })
+              gitlab.reload()
+            },
+          }}
+        />
+      </div>
+
+      <PipelineStrip
+        pipeline={latestPipeline.data ? (latestPipeline.data.pipelines[0] ?? null) : undefined}
+        isLoading={latestPipeline.isLoading}
+        error={latestPipeline.error}
+        onRetry={latestPipeline.reload}
+        isConnected={isGitlabConnected}
+      />
+
+      {isGitlabConnected && (
+        <>
+          <PipelineTable
+            rows={pipelines.data?.pipelines}
+            isLoading={pipelines.isLoading}
+            error={pipelines.error}
+            onRetry={pipelines.reload}
+            page={pipelinePage}
+            pageSize={CICD_PAGE_SIZE}
+            totalCount={pipelines.data?.totalCount}
+            onPageChange={setPipelinePage}
+            className="mb-5"
+          />
+
+          <DeploymentTable
+            rows={deployments.data?.deployments}
+            isLoading={deployments.isLoading}
+            error={deployments.error}
+            onRetry={deployments.reload}
+            page={deploymentPage}
+            pageSize={CICD_PAGE_SIZE}
+            totalCount={deployments.data?.totalCount}
+            onPageChange={setDeploymentPage}
+          />
+        </>
+      )}
+    </>
+  )
+}
+
+// 프로젝트가 바뀌면 페이지 상태를 새로 시작한다.
 function CicdPage() {
-  return <h1>CI/CD</h1>
+  const params = useParams()
+  const projectId = params.projectId ? Number(params.projectId) : null
+
+  if (projectId === null || Number.isNaN(projectId)) {
+    return null
+  }
+
+  return <CicdContent key={projectId} projectId={projectId} />
 }
 
 export default CicdPage

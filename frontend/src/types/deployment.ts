@@ -15,6 +15,8 @@ export interface Deployment {
 export interface DeploymentListResponse {
   deployments: Deployment[]
   collectedAt: string
+  // 전체 건수 포함 여부는 Backend 확인 전 (설계서 10.2)
+  totalCount?: number
 }
 
 export interface PageParams {
