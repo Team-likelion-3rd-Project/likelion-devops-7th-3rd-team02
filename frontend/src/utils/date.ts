@@ -15,3 +15,41 @@ export const formatDate = (value: string | null | undefined): string => {
     day: 'numeric',
   })
 }
+
+const toDate = (value: string | null | undefined) => {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const pad = (value: number) => String(value).padStart(2, '0')
+
+// 마지막 수집 14:32:08
+export const formatClock = (value: string | null | undefined): string => {
+  const date = toDate(value)
+  if (!date) return '-'
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+// 12분 전 / 어제 18:05 / 10.3 18:05 (시안 최근 배포 표기)
+export const formatRelativeTime = (
+  value: string | null | undefined,
+  now: Date = new Date(),
+): string => {
+  const date = toDate(value)
+  if (!date) return '-'
+
+  const diffMinutes = Math.floor((now.getTime() - date.getTime()) / 60000)
+  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`
+
+  if (diffMinutes < 1) return '방금 전'
+  if (diffMinutes < 60) return `${diffMinutes}분 전`
+
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfYesterday = new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000)
+
+  if (date >= startOfToday) return `${Math.floor(diffMinutes / 60)}시간 전`
+  if (date >= startOfYesterday) return `어제 ${time}`
+
+  return `${date.getMonth() + 1}.${date.getDate()} ${time}`
+}
