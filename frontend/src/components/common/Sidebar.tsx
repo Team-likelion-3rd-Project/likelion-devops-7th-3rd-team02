@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 
 import BrandLogo from './BrandLogo'
+import ProfileModal from './ProfileModal'
 import ThemeToggle from './ThemeToggle'
 import { useProjectContext } from '../../hooks/useProjectContext'
 import { clearAuthStorage } from '../../utils/authStorage'
@@ -22,6 +24,7 @@ const navItemClass = ({ isActive }: { isActive: boolean }) =>
 function Sidebar() {
   const navigate = useNavigate()
   const { currentProject, currentUser } = useProjectContext()
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   const projectId = currentProject?.id
   const projectMenus = [
@@ -78,8 +81,15 @@ function Sidebar() {
 
       <div className="mt-auto flex items-end justify-between gap-2 border-t border-line2 px-2 pt-3.5 text-[13px]">
         <div className="min-w-0">
+          {/* 사용자 이름을 누르면 프로필 모달 (설계서 4.1, 10.3) */}
           {currentUser && (
-            <b className="block truncate font-semibold">{currentUser.name}</b>
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen(true)}
+              className={`block max-w-full cursor-pointer truncate text-left font-semibold hover:underline ${focusRing}`}
+            >
+              {currentUser.name}
+            </button>
           )}
           <button
             type="button"
@@ -92,6 +102,9 @@ function Sidebar() {
 
         <ThemeToggle />
       </div>
+      {isProfileOpen && currentUser && (
+        <ProfileModal user={currentUser} onClose={() => setIsProfileOpen(false)} />
+      )}
     </aside>
   )
 }

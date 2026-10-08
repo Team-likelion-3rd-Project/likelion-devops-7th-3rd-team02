@@ -1,6 +1,9 @@
+import { useState } from 'react'
+
 import AlertBanner from '../components/dashboard/AlertBanner'
 import MyTaskList from '../components/dashboard/MyTaskList'
 import RecentDeployList from '../components/dashboard/RecentDeployList'
+import ProjectCreateModal from '../components/project/ProjectCreateModal'
 import ProjectList from '../components/project/ProjectList'
 import { primaryButtonClass } from '../components/common/styles'
 import { useDashboardData } from '../hooks/useDashboardData'
@@ -25,6 +28,7 @@ function DashboardPage() {
   )
 
   const collectedAt = deployments.data?.collectedAt
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   return (
     <>
@@ -40,8 +44,11 @@ function DashboardPage() {
           )}
         </div>
 
-        {/* 프로젝트 만들기 모달은 07 단계에서 연결한다. */}
-        <button type="button" disabled className={primaryButtonClass}>
+        <button
+          type="button"
+          onClick={() => setIsCreateOpen(true)}
+          className={primaryButtonClass}
+        >
           프로젝트 만들기
         </button>
       </div>
@@ -76,6 +83,8 @@ function DashboardPage() {
         error={projectError}
         onSelect={selectProject}
       />
+
+      {isCreateOpen && <ProjectCreateModal onClose={() => setIsCreateOpen(false)} />}
     </>
   )
 }

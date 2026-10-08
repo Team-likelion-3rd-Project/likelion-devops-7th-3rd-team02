@@ -9,12 +9,14 @@ function Modal({
   onClose,
   children,
   footer,
+  maxWidth = 'max-w-[520px]',
 }: {
   title: string
   description?: string
   onClose: () => void
   children: ReactNode
   footer: ReactNode
+  maxWidth?: string
 }) {
   const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (event.key === 'Escape') onClose()
@@ -36,20 +38,19 @@ function Modal({
         aria-modal="true"
         aria-labelledby="modal-title"
         onMouseDown={(event) => event.stopPropagation()}
-        className="flex max-h-full w-full max-w-[460px] flex-col overflow-y-auto rounded-xl border border-line bg-panel text-ink"
+        className={`flex max-h-full w-full ${maxWidth} flex-col gap-4 overflow-y-auto rounded-[14px] border border-line bg-panel p-6 text-ink`}
       >
-        <div className="px-6 pt-6 pb-4">
-          <h2 id="modal-title" className="text-[18px] font-bold tracking-[-0.02em]">
+        {/* 시안 ProjectModal: 폭 520px, radius 14px, 여백 24px, 제목 20px */}
+        <div>
+          <h2 id="modal-title" className="text-[20px] font-bold tracking-[-0.02em]">
             {title}
           </h2>
-          {description && (
-            <p className="mt-1 text-[13px] text-muted">{description}</p>
-          )}
+          {description && <p className="text-muted">{description}</p>}
         </div>
 
-        <div className="flex flex-col gap-4 px-6">{children}</div>
+        {children}
 
-        <div className="flex justify-end gap-2 px-6 pt-5 pb-6">{footer}</div>
+        <div className="flex justify-end gap-2">{footer}</div>
       </div>
     </div>,
     document.body,
