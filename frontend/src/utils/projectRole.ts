@@ -1,15 +1,7 @@
-import type { ProjectMember } from '../types/member'
 import type { ProjectRole } from '../types/project'
 
-export const getCurrentProjectRole = (
-  members: ProjectMember[] | null | undefined,
-  userId: number | null | undefined,
-): ProjectRole | null => {
-  if (!members || !userId) {
-    return null
-  }
-
-  const currentMember = members.find((member) => member.userId === userId)
-
-  return currentMember?.role ?? null
+// 시안 표기: 소유자 / 멤버
+export const PROJECT_ROLE_LABEL: Record<ProjectRole, string> = {
+  OWNER: '소유자',
+  MEMBER: '멤버',
 }

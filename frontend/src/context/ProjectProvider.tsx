@@ -1,143 +1,47 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { useMatch } from 'react-router-dom'
+
 import ProjectContext from './ProjectContext'
-import type { ProjectWithDetails } from './ProjectContext'
-import {
-  createProject as createProjectApi,
-  getProjects,
-} from '../api/projectApi'
-import { getMembers } from '../api/memberApi'
-import { getTasks } from '../api/taskApi'
-import { getMe } from '../api/userApi'
-import { getErrorMessage } from '../utils/error'
-import type { ProjectListItem } from '../types/project'
-import type { UserMe } from '../types/user'
-
-function formatProjectDate(value: string | null | undefined): string {
-  if (!value) return '-'
-
-  const date = new Date(value)
-  const today = new Date()
-
-  const dateOnly = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  )
-
-  const todayOnly = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-  )
-
-  const diffDays = Math.round(
-    (todayOnly.getTime() - dateOnly.getTime()) / (1000 * 60 * 60 * 24),
-  )
-
-  if (diffDays === 0) return '오늘'
-  if (diffDays === 1) return '어제'
-
-  return `${date.getMonth() + 1}.${date.getDate()}`
-}
-
-type ProjectSource = ProjectListItem &
-  Partial<Pick<ProjectWithDetails, 'updatedAt' | 'role' | 'members' | 'tasks'>>
-
-function normalizeProject(project: ProjectSource): ProjectWithDetails {
-  return {
-    ...project,
-    members: project.members ?? [],
-    tasks: project.tasks ?? [],
-    updatedAt: formatProjectDate(project.updatedAt ?? project.createdAt),
-  }
-}
+import { createProject as createProjectApi } from '../api/projectApi'
+import { useProjectList } from '../hooks/useProjectList'
+import type { ProjectCreateRequest } from '../types/project'
 
 function ProjectProvider({ children }: { children: ReactNode }) {
-  const [projectList, setProjectList] = useState<ProjectWithDetails[]>([])
-  const [currentUser, setCurrentUser] = useState<UserMe | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { projectList, setProjectList, currentUser, isLoading, error } =
+    useProjectList()
 
-  useEffect(() => {
-    let cancelled = false
+  const match = useMatch('/projects/:projectId/*')
+  const urlProjectId = match?.params.projectId
+    ? Number(match.params.projectId)
+    : null
 
-    const loadDashboardData = async () => {
-      try {
-        const [projectResponse, userResponse] = await Promise.all([
-          getProjects(),
-          getMe(),
-        ])
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
+    null,
+  )
 
-        const projects = projectResponse.data.data ?? []
+  // 프로젝트 하위 화면으로 이동하면 그 프로젝트를 현재 프로젝트로 기억한다.
+  if (urlProjectId !== null && urlProjectId !== selectedProjectId) {
+    setSelectedProjectId(urlProjectId)
+  }
 
-        const user = userResponse.data.data ?? null
+  const currentProjectId =
+    urlProjectId ?? selectedProjectId ?? projectList[0]?.id ?? null
 
-        const projectsWithDetails = await Promise.all(
-          projects.map(async (project) => {
-            const [memberResponse, taskResponse] = await Promise.all([
-              getMembers(project.id),
-              getTasks(project.id),
-            ])
+  const currentProject =
+    projectList.find((project) => project.id === currentProjectId) ?? null
 
-            return normalizeProject({
-              ...project,
-              members: memberResponse.data.data ?? [],
-              tasks: taskResponse.data.data ?? [],
-            })
-          }),
-        )
-
-        if (cancelled) return
-
-        setCurrentUser(user)
-        setProjectList(projectsWithDetails)
-      } catch (error) {
-        if (cancelled) return
-
-        setError(getErrorMessage(error, '프로젝트 정보를 불러오지 못했습니다.'))
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false)
-        }
-      }
-    }
-    loadDashboardData()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const createProject = async ({
-    name,
-    description,
-  }: {
-    name: string
-    description?: string
-  }) => {
-    const response = await createProjectApi({
-      name,
-      description,
-    })
-
+  // 저장소 연결 호출은 프로젝트 만들기 모달 단계에서 붙인다 (설계서 3.3).
+  const createProject = async (data: ProjectCreateRequest) => {
+    const response = await createProjectApi(data)
     const project = response.data.data
 
-    const [memberResponse, taskResponse] = await Promise.all([
-      getMembers(project.id),
-      getTasks(project.id),
+    setProjectList((prevProjects) => [
+      { ...project, role: project.role ?? 'OWNER' },
+      ...prevProjects,
     ])
 
-    const newProject = normalizeProject({
-      ...project,
-      role: 'OWNER',
-      members: memberResponse.data.data ?? [],
-      tasks: taskResponse.data.data ?? [],
-    })
-
-    setProjectList((prevProjects) => [newProject, ...prevProjects])
-
-    return newProject
+    return project
   }
 
   return (
@@ -145,6 +49,8 @@ function ProjectProvider({ children }: { children: ReactNode }) {
       value={{
         projectList,
         currentUser,
+        currentProject,
+        selectProject: setSelectedProjectId,
         isLoading,
         error,
         createProject,
