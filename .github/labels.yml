@@ -75,3 +75,17 @@
 - name: good-first-issue
   color: "7057FF"
   description: 처음 기여하기 좋은 이슈
+
+# ── Role (3차 마일스톤 역할 트랙 ON/CL/BE/FE) ────────
+- name: role/onprem
+  color: "35507A"
+  description: "역할: 온프레미스 (개발·검증 환경)"
+- name: role/cloud
+  color: "13866F"
+  description: "역할: 클라우드 (운영 환경)"
+- name: role/backend
+  color: "F26B1D"
+  description: "역할: 백엔드"
+- name: role/frontend
+  color: "1F2328"
+  description: "역할: 프론트엔드"
