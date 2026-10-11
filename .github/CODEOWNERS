@@ -1,24 +1,37 @@
 # CODEOWNERS — 경로별 자동 리뷰어 지정
-# 팀별로 GitHub ID를 채워 넣습니다. 지정된 사람은 해당 경로 PR에 자동으로 리뷰어가 됩니다.
-# 형식: <경로 패턴> <@GitHub-ID ...>
+# 지정된 사람은 해당 경로 PR에 자동으로 리뷰어가 됩니다.
+# 형식: <경로 패턴> <@GitHub-ID ...>  (아래쪽 규칙이 우선 적용됩니다)
+#
+# 김석현 @alberione1110  팀장 / Backend
+# 이주원 @ssac-JW        Frontend
+# 김민호 @KimMinHo-02    AWS / Kubernetes
+# 최윤재 @cheesemango1   CI/CD / Monitoring
 
 # 기본 리뷰어 (모든 변경)
-*                       @{{팀장-id}}
+*                       @alberione1110
 
 # 프론트엔드
-/frontend/              @{{fe-1}} @{{fe-2}}
-*.tsx                   @{{fe-1}}
-*.css                   @{{fe-1}}
+/frontend/              @ssac-JW
+*.tsx                   @ssac-JW
 
 # 백엔드
-/backend/               @{{be-1}} @{{be-2}}
+/backend/               @alberione1110
+/postman/               @alberione1110
 
-# 인프라 / CI
-/.github/workflows/     @{{팀장-id}}
-/docker/                @{{팀장-id}}
-Dockerfile              @{{팀장-id}}
+# 인프라 (AWS / Terraform / Kubernetes)
+/terraform/             @KimMinHo-02
+/k8s/                   @KimMinHo-02
+/k8s/monitoring/        @cheesemango1 @KimMinHo-02
+/k8s/rbac/              @cheesemango1 @KimMinHo-02
 
-# 문서 — 누구나 리뷰 가능하도록 팀 전체 지정
+# CI/CD / 모니터링
+/.gitlab-ci.yml         @cheesemango1
+/scripts/               @cheesemango1
+/monitoring/            @cheesemango1
+/.github/workflows/     @cheesemango1 @alberione1110
+Dockerfile              @cheesemango1
+
+# 문서 — 팀 전체 리뷰
 /docs/                  @Team-likelion-3rd-Project/team-02
 README.md               @Team-likelion-3rd-Project/team-02
-CONTRIBUTING.md         @{{팀장-id}}
+CONTRIBUTING.md         @alberione1110
