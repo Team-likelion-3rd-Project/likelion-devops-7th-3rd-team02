@@ -1,0 +1,50 @@
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gitlab-deployer-role
+  namespace: devflow
+  labels:
+    app.kubernetes.io/name: gitlab-deployer
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/managed-by: kubectl
+rules:
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    resourceNames:
+      - frontend
+      - backend
+    verbs:
+      - get
+      - patch
+      - update
+
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch

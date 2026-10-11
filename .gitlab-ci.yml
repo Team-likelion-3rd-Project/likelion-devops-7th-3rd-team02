@@ -1,0 +1,132 @@
+stages:
+  - build
+  - test
+  - image
+  - verify
+  - deploy
+
+frontend-build:
+  stage: build
+  image: node:22-alpine
+  before_script:
+    - cd frontend
+  script:
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 day
+
+backend-test:
+  stage: test
+  image: gradle:8.14-jdk21
+  before_script:
+    - cd backend
+    - chmod +x gradlew
+  script:
+    - ./gradlew test --no-daemon
+
+backend-build:
+  stage: build
+  image: gradle:8.14-jdk21
+  before_script:
+    - cd backend
+    - chmod +x gradlew
+  script:
+    - ./gradlew clean bootJar -x test --no-daemon
+  artifacts:
+    paths:
+      - backend/build/libs/*.jar
+    expire_in: 1 day
+
+frontend-image:
+  stage: image
+  image: docker:latest
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA" ./frontend
+    - docker push "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA"
+
+backend-image:
+  stage: image
+  image: docker:latest
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA" ./backend
+    - docker push "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA"
+aws-eks-check:
+  stage: verify
+  image:
+    name: amazon/aws-cli:latest
+    entrypoint: [""]
+  script:
+    - aws --version
+    - aws sts get-caller-identity
+    - aws eks describe-cluster --region ap-northeast-1 --name devflow-dev-eks
+eks-kubectl-check:
+  stage: verify
+  image:
+    name: amazon/aws-cli:latest
+    entrypoint: [""]
+  before_script:
+    - curl -LO "https://dl.k8s.io/release/v1.36.0/bin/linux/amd64/kubectl"
+    - chmod +x kubectl
+    - mv kubectl /usr/local/bin/kubectl
+  script:
+    - aws sts get-caller-identity
+    - aws eks update-kubeconfig --region ap-northeast-1 --name devflow-dev-eks
+    - kubectl get namespaces
+deploy-dev:
+  stage: deploy
+  image:
+    name: amazon/aws-cli:latest
+    entrypoint: [""]
+  before_script:
+    - curl -LO "https://dl.k8s.io/release/v1.36.0/bin/linux/amd64/kubectl"
+    - chmod +x kubectl
+    - mv kubectl /usr/local/bin/kubectl
+  script:
+    - ./scripts/deploy.sh
+  when: manual
+  only:
+    - feature/devops
+    - develop
+health-check-dev:
+  stage: deploy
+  image:
+    name: amazon/aws-cli:latest
+    entrypoint: [""]
+  before_script:
+    - curl -LO "https://dl.k8s.io/release/v1.36.0/bin/linux/amd64/kubectl"
+    - chmod +x kubectl
+    - mv kubectl /usr/local/bin/kubectl
+    - aws eks update-kubeconfig --region ap-northeast-1 --name devflow-dev-eks
+  script:
+    - ./scripts/health-check.sh
+  needs:
+    - deploy-dev
+  when: on_success
+  only:
+    - feature/devops
+    - develop
+
+rollback-dev:
+  stage: deploy
+  image:
+    name: amazon/aws-cli:latest
+    entrypoint: [""]
+  before_script:
+    - curl -LO "https://dl.k8s.io/release/v1.36.0/bin/linux/amd64/kubectl"
+    - chmod +x kubectl
+    - mv kubectl /usr/local/bin/kubectl
+    - aws eks update-kubeconfig --region ap-northeast-1 --name devflow-dev-eks
+  script:
+    - ./scripts/rollback.sh
+  when: manual
+  allow_failure: true
+  only:
+    - feature/devops
+    - develop      

@@ -1,0 +1,969 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: devflow-monitoring
+    app.kubernetes.io/managed-by: kubectl
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    k8s-app: metrics-server
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:aggregated-metrics-reader
+  labels:
+    k8s-app: metrics-server
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+  - apiGroups:
+      - metrics.k8s.io
+    resources:
+      - pods
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:metrics-server
+  labels:
+    k8s-app: metrics-server
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/metrics
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: metrics-server-auth-reader
+  namespace: kube-system
+  labels:
+    k8s-app: metrics-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: metrics-server:system:auth-delegator
+  labels:
+    k8s-app: metrics-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:metrics-server
+  labels:
+    k8s-app: metrics-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:metrics-server
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    k8s-app: metrics-server
+spec:
+  type: ClusterIP
+  selector:
+    k8s-app: metrics-server
+  ports:
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: https
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    k8s-app: metrics-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: metrics-server
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        k8s-app: metrics-server
+    spec:
+      serviceAccountName: metrics-server
+      priorityClassName: system-cluster-critical
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+        - name: metrics-server
+          image: registry.k8s.io/metrics-server/metrics-server:v0.8.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --cert-dir=/tmp
+            - --secure-port=10250
+            - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+            - --kubelet-use-node-status-port
+            - --metric-resolution=15s
+          ports:
+            - name: https
+              containerPort: 10250
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: https
+              scheme: HTTPS
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          # upstream 기본 resource 설정을 그대로 유지한다.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
+      volumes:
+        - name: tmp-dir
+          emptyDir: {}
+
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta1.metrics.k8s.io
+  labels:
+    k8s-app: metrics-server
+spec:
+  group: metrics.k8s.io
+  groupPriorityMinimum: 100
+  # aggregation layer 가 metrics-server 의 자체 서명 serving 인증서를 신뢰하도록
+  # 하는 설정이다. upstream 기본값이며 --kubelet-insecure-tls 와는 다른 항목이다.
+  insecureSkipTLSVerify: true
+  service:
+    name: metrics-server
+    namespace: kube-system
+    port: 443
+  version: v1beta1
+  versionPriority: 100
+
+---
+# =============================================================================
+# 3. PROMETHEUS  (namespace: monitoring)
+# =============================================================================
+# Kubernetes API 는 읽기 전용으로만 접근하며, scrape discovery 에 필요한 범위로
+# 제한한다. secrets 접근 없음, 쓰기 없음, wildcard 없음, cluster-admin 없음.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: devflow-monitoring
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: devflow-monitoring
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
+    verbs:
+      - get
+      - list
+      - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: devflow-monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: monitoring
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: devflow-monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      external_labels:
+        cluster: devflow-dev-eks
+
+    scrape_configs:
+      # ---------------------------------------------------------------------
+      # Prometheus 자기 자신
+      # ---------------------------------------------------------------------
+      - job_name: prometheus
+        static_configs:
+          - targets:
+              - localhost:9090
+
+      # ---------------------------------------------------------------------
+      # DevFlow Backend (Spring Boot 3.5.4 + Micrometer Prometheus registry)
+      #
+      # 애플리케이션 소스에서 확인한 endpoint:
+      #   backend/src/main/resources/application.yml:34
+      #     management.endpoints.web.exposure.include: health,prometheus
+      #   backend/.../global/security/SecurityConfig.java:49
+      #     /actuator/prometheus 가 permitAll (scrape 시 인증 불필요)
+      #   Service/backend-service (devflow) 포트 8080, 포트 이름 "http"
+      #
+      # 단일 static target 을 쓰지 않는 이유(의도적 차이):
+      # backend-service.devflow.svc.cluster.local:8080 하나를 static target 으로
+      # 두면 ClusterIP 가 매 scrape 마다 2개 backend Pod 중 하나로 부하 분산한다.
+      # 그러면 JVM gauge 값이 Pod 사이를 오가고 Micrometer counter 는 초기화된
+      # 것처럼 보여 rate() 결과가 무의미해진다. endpoint service discovery 를
+      # 쓰면 backend Pod 마다 target 이 하나씩 생긴다. 아래 node-exporter 에
+      # 적용한 것과 같은 이유다.
+      # 문자 그대로의 단일 static target 을 선호한다면 아래
+      # kubernetes_sd_configs/relabel_configs 블록을 다음으로 교체한다.
+      #   static_configs:
+      #     - targets: ["backend-service.devflow.svc.cluster.local:8080"]
+      # ---------------------------------------------------------------------
+      - job_name: backend
+        metrics_path: /actuator/prometheus
+        scheme: http
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - devflow
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: backend-service;http
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node
+
+      # ---------------------------------------------------------------------
+      # kube-state-metrics (단일 replica 이므로 static Service target 으로 충분)
+      # ---------------------------------------------------------------------
+      - job_name: kube-state-metrics
+        static_configs:
+          - targets:
+              - kube-state-metrics.monitoring.svc.cluster.local:8080
+
+      # ---------------------------------------------------------------------
+      # node-exporter (DaemonSet 이므로 endpoint discovery 로 Node 당 target 을
+      # 하나씩 만든다. 부하 분산되는 단일 Service target 을 사용하지 않는다)
+      # ---------------------------------------------------------------------
+      - job_name: node-exporter
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - monitoring
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: node-exporter;metrics
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+
+      # frontend job 은 없다. frontend 이미지는 정적 파일을 서빙하는 순수 nginx 라
+      # Prometheus metric endpoint 가 없다. 가짜 target 을 만들지 않는다.
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: devflow-monitoring
+spec:
+  replicas: 1
+  # Recreate: emptyDir 기반 TSDB 하나를 두 Pod 가 동시에 열면 안 된다.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+        app.kubernetes.io/name: prometheus
+        app.kubernetes.io/part-of: devflow-monitoring
+    spec:
+      serviceAccountName: prometheus
+      nodeSelector:
+        kubernetes.io/os: linux
+      # prom/prometheus 는 uid/gid 65534 로 실행된다. TSDB 를 쓸 수 있도록
+      # fsGroup 으로 emptyDir 소유권을 맞춘다.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.13.2
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            # 짧은 데모용 보존 기간이다. 장기 metric 저장소가 아니다.
+            - --storage.tsdb.retention.time=3d
+            - --web.listen-address=:9090
+            - --web.enable-lifecycle
+          ports:
+            - name: http
+              containerPort: 9090
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+              readOnly: true
+            - name: storage
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        # emptyDir: Pod 가 교체되면 TSDB 이력이 사라진다.
+        # 이번 프로젝트에서는 수용하며, EBS CSI + PVC 는 향후 개선 항목이다.
+        - name: storage
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: devflow-monitoring
+spec:
+  # ClusterIP 전용. LoadBalancer 를 만들지 않고 public Ingress 에도 추가하지 않는다.
+  # 테스트 접근: kubectl -n monitoring port-forward svc/prometheus 9090:9090
+  type: ClusterIP
+  selector:
+    app: prometheus
+  ports:
+    - name: http
+      port: 9090
+      targetPort: http
+      protocol: TCP
+
+---
+# =============================================================================
+# 4. KUBE-STATE-METRICS  (namespace: monitoring)
+# =============================================================================
+# Kubernetes 객체 상태 metric(deployment, pod, node, HPA 등)을 제공한다.
+# RBAC 은 list/watch 만 허용하며, 아래 --resources 로 활성화한 리소스 타입으로만
+# 제한한다. secrets 없음, configmaps 없음, 쓰기 없음, wildcard 없음.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-state-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/part-of: devflow-monitoring
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-state-metrics
+  labels:
+    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/part-of: devflow-monitoring
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - namespaces
+      - pods
+      - services
+      - persistentvolumes
+      - persistentvolumeclaims
+    verbs:
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - replicasets
+      - daemonsets
+      - statefulsets
+    verbs:
+      - list
+      - watch
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - list
+      - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-state-metrics
+  labels:
+    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/part-of: devflow-monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-state-metrics
+subjects:
+  - kind: ServiceAccount
+    name: kube-state-metrics
+    namespace: monitoring
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-state-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/part-of: devflow-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-state-metrics
+  template:
+    metadata:
+      labels:
+        app: kube-state-metrics
+        app.kubernetes.io/name: kube-state-metrics
+        app.kubernetes.io/part-of: devflow-monitoring
+    spec:
+      serviceAccountName: kube-state-metrics
+      automountServiceAccountToken: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kube-state-metrics
+          image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.19.1
+          imagePullPolicy: IfNotPresent
+          args:
+            # 위 RBAC 이 허용하고 대시보드가 필요로 하는 리소스만 수집한다.
+            - --resources=nodes,namespaces,pods,services,persistentvolumes,persistentvolumeclaims,deployments,replicasets,daemonsets,statefulsets,horizontalpodautoscalers
+            - --port=8080
+            - --telemetry-port=8081
+          ports:
+            - name: http-metrics
+              containerPort: 8080
+              protocol: TCP
+            - name: telemetry
+              containerPort: 8081
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http-metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: telemetry
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-state-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/part-of: devflow-monitoring
+spec:
+  type: ClusterIP
+  selector:
+    app: kube-state-metrics
+  ports:
+    - name: http-metrics
+      port: 8080
+      targetPort: http-metrics
+      protocol: TCP
+    - name: telemetry
+      port: 8081
+      targetPort: telemetry
+      protocol: TCP
+
+---
+# =============================================================================
+# 5. NODE-EXPORTER  (namespace: monitoring)
+# =============================================================================
+# Linux Node 마다 Pod 하나씩 실행한다. host 의 CPU / memory / filesystem metric 은
+# /proc, /sys, / 를 읽기 전용 hostPath 로 mount 하고 --path.* 인자와 맞춰서 읽는다.
+#
+# privileged 아님, hostNetwork 없음, hostPID 없음. 이 프로젝트 대시보드가 사용하는
+# CPU/memory/filesystem metric 에는 이들 중 어느 것도 필요하지 않다. 알아둘 트레이드
+# 오프: hostNetwork 를 쓰지 않으므로 node_network_* / node_netstat_* 계열은 host 가
+# 아니라 Pod network namespace 를 나타낸다. Prometheus 가
+# __meta_kubernetes_pod_node_name relabel 로 실제 Node 이름을 붙이므로 metric 을
+# Node 단위로 구분하는 데에는 문제가 없다.
+#
+# 전체 toleration 을 두어 향후 taint 가 붙는 Node 까지 포함해 모든 Node 를 커버한다.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: node-exporter
+    app.kubernetes.io/part-of: devflow-monitoring
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+        app.kubernetes.io/name: node-exporter
+        app.kubernetes.io/part-of: devflow-monitoring
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - operator: Exists
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: node-exporter
+          image: quay.io/prometheus/node-exporter:v1.11.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+            - --path.rootfs=/host/root
+            - --web.listen-address=:9100
+            # filesystem 패널에 실제 Node 볼륨만 보이도록 pseudo/임시 파일시스템을
+            # 제외한다.
+            - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run/containerd/.+|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+            - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
+          ports:
+            - name: metrics
+              containerPort: 9100
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+            - name: root
+              mountPath: /host/root
+              readOnly: true
+              mountPropagation: HostToContainer
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: root
+          hostPath:
+            path: /
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: node-exporter
+    app.kubernetes.io/part-of: devflow-monitoring
+spec:
+  # headless: 이 Service 는 Prometheus endpoint discovery 가 node-exporter Pod 를
+  # 모두 열거할 수 있게 하려는 목적만 있다. 부하 분산되는 ClusterIP 로 두면 특정
+  # Node 하나만 scrape 하게 될 위험이 있다.
+  clusterIP: None
+  selector:
+    app: node-exporter
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics
+      protocol: TCP
+
+---
+# =============================================================================
+# 6. GRAFANA  (namespace: monitoring)
+# =============================================================================
+# Datasource provisioning: Grafana 는 기동 시
+# /etc/grafana/provisioning/datasources 아래의 모든 파일을 읽는다. UID
+# "prometheus" 는 k8s/monitoring/grafana-dashboard.json 이 사용하는 계약이다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasource
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: devflow-monitoring
+data:
+  datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        url: http://prometheus.monitoring.svc.cluster.local:9090
+        isDefault: true
+        editable: false
+        jsonData:
+          timeInterval: 15s
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: devflow-monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/part-of: devflow-monitoring
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      automountServiceAccountToken: false
+      # 공식 Grafana 이미지는 uid/gid 472 로 실행된다.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: grafana
+          image: grafana/grafana:13.1.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          # RUNTIME 선행 조건 - Grafana 를 apply 하기 전에 이 Secret 을 만든다.
+          #   kubectl -n monitoring create secret generic grafana-admin \
+          #     --from-literal=admin-user='<GRAFANA_ADMIN_USER>' \
+          #     --from-literal=admin-password='<GRAFANA_ADMIN_PASSWORD>'
+          # Secret 객체와 그 값은 의도적으로 저장소에 두지 않으며 admin/admin 같은
+          # 기본값도 하드코딩하지 않는다. 아래 참조를 optional 로 두지 않은 것도
+          # 의도적이다. 기본 비밀번호로 조용히 기동되는 대신 Grafana 가 명확히
+          # 실패하도록 하기 위해서다.
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-password
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "false"
+            - name: GF_ANALYTICS_REPORTING_ENABLED
+              value: "false"
+            - name: GF_ANALYTICS_CHECK_FOR_UPDATES
+              value: "false"
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: datasource
+              mountPath: /etc/grafana/provisioning/datasources
+              readOnly: true
+            - name: storage
+              mountPath: /var/lib/grafana
+      volumes:
+        - name: datasource
+          configMap:
+            name: grafana-datasource
+        - name: storage
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: devflow-monitoring
+spec:
+  type: ClusterIP
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP

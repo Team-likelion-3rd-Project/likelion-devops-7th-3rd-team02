@@ -1,0 +1,25 @@
+# Terraform State Files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+*.tfvars
+
+# Terraform Local State
+.terraform/
+.terraform.lock.hcl
+
+# Sensitive tfvars files
+*.auto.tfvars
+secrets.tfvars
+*.secret.tfvars
+
+# Terraform Plan files
+*.tfplan
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+WORK_LOG_*
