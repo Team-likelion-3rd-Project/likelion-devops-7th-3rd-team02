@@ -1,1 +1,54 @@
+/* DevFlow 디자인 토큰 — src/index.css 에 그대로 사용 (Tailwind v4)
+   값은 확정 시안(design/boards)에서 추출했다. hex 를 컴포넌트에 직접 쓰지 않는다. */
 @import "tailwindcss";
+
+/* 화이트가 기본, <html data-theme="dark"> 일 때 다크 */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  --bg:#F2F4F8; --chrome:#FFFFFF; --panel:#FFFFFF; --line:#D5DBE8; --line2:#E7EAF2;
+  --tx:#161B26; --mu:#5B657C; --ac:#3A44C4; --fill:#3A44C4; --onfill:#fff;
+  --ok:#13774A; --okbg:rgba(19,119,74,.10);
+  --wn:#935F00; --wnbg:rgba(147,95,0,.11);
+  --er:#C22B27; --erbg:rgba(194,43,39,.09);
+  --bl:#1A62B3; --blbg:rgba(26,98,179,.10);
+  --pu:#6840C0; --pubg:rgba(104,64,192,.10);
+  --acbg:rgba(58,68,196,.09); --hover:#F6F8FC; --shadow:0 1px 2px rgba(22,27,38,.05);
+}
+[data-theme="dark"] {
+  --bg:#0E121B; --chrome:#151B27; --panel:#1D2535; --line:#2F3A55; --line2:#252E45;
+  --tx:#E9ECF4; --mu:#9AA4BA; --ac:#8F9CFF; --fill:#5B6CF0; --onfill:#fff;
+  --ok:#3DCB8A; --okbg:rgba(61,203,138,.14);
+  --wn:#EBAA45; --wnbg:rgba(235,170,69,.15);
+  --er:#F46A66; --erbg:rgba(244,106,102,.15);
+  --bl:#5BB0F5; --blbg:rgba(91,176,245,.15);
+  --pu:#B79BFF; --pubg:rgba(183,155,255,.16);
+  --acbg:rgba(143,156,255,.14); --hover:#232D42; --shadow:none;
+}
+
+/* Tailwind 유틸리티 이름: bg-page, bg-chrome, bg-panel, border-line, text-ink, text-muted ... */
+@theme inline {
+  --color-page: var(--bg);
+  --color-chrome: var(--chrome);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-line2: var(--line2);
+  --color-ink: var(--tx);
+  --color-muted: var(--mu);
+  --color-accent: var(--ac);
+  --color-accent-bg: var(--acbg);
+  --color-fill: var(--fill);
+  --color-onfill: var(--onfill);
+  --color-hover: var(--hover);
+  --color-ok: var(--ok);   --color-ok-bg: var(--okbg);
+  --color-warn: var(--wn); --color-warn-bg: var(--wnbg);
+  --color-err: var(--er);  --color-err-bg: var(--erbg);
+  --color-info: var(--bl); --color-info-bg: var(--blbg);
+  --color-merged: var(--pu); --color-merged-bg: var(--pubg);
+  --font-sans: 'Noto Sans KR', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --shadow-panel: var(--shadow);
+}
+
+html, body { margin: 0; background: var(--bg); color: var(--tx);
+  font-family: 'Noto Sans KR', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
