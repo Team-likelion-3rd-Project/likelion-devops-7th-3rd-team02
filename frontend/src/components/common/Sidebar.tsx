@@ -7,7 +7,7 @@ import MemberModal from '../project/MemberModal'
 import ThemeToggle from './ThemeToggle'
 import { useProjectContext } from '../../hooks/useProjectContext'
 import { clearAuthStorage } from '../../utils/authStorage'
-import { PROJECT_ROLE_LABEL } from '../../utils/projectRole'
+import { isProjectOwner, PROJECT_ROLE_LABEL } from '../../utils/projectRole'
 
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
@@ -28,12 +28,7 @@ function Sidebar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isMemberOpen, setIsMemberOpen] = useState(false)
 
-  // 응답의 role을 쓰고, Backend 반영 전에는 2차 방식(ownerId 비교)으로 대신한다 (설계서 2.3).
-  const isOwner = currentProject
-    ? currentProject.role
-      ? currentProject.role === 'OWNER'
-      : currentProject.ownerId === currentUser?.userId
-    : false
+  const isOwner = isProjectOwner(currentProject, currentUser?.userId)
 
   const projectId = currentProject?.id
   const projectMenus = [

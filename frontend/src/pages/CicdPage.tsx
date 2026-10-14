@@ -7,7 +7,9 @@ import PipelineStrip from '../components/cicd/PipelineStrip'
 import PipelineTable from '../components/cicd/PipelineTable'
 import { connectGithub, connectGitlab } from '../api/integrationApi'
 import { CICD_PAGE_SIZE, useCicdData } from '../hooks/useCicdData'
+import { useProjectContext } from '../hooks/useProjectContext'
 import { formatClock } from '../utils/date'
+import { isProjectOwner } from '../utils/projectRole'
 
 // 설계서 4.7 CI/CD (조회 전용: 승인·롤백 버튼, 작성자 없음)
 function CicdContent({ projectId }: { projectId: number }) {
@@ -24,6 +26,7 @@ function CicdContent({ projectId }: { projectId: number }) {
     setDeploymentPage,
     collectedAt,
   } = useCicdData(projectId)
+  const { currentProject, currentUser } = useProjectContext()
 
   // 파이프라인·배포는 GitLab 프로젝트에서 가져오므로 GitLab 연결 전에는 안내만 표시한다 (설계서 9.7).
   const isGitlabConnected = gitlab.data !== null
@@ -47,6 +50,7 @@ function CicdContent({ projectId }: { projectId: number }) {
         />
 
         <IntegrationPanel
+          canConnect={isProjectOwner(currentProject, currentUser?.userId)}
           github={{
             value: github.data === null ? null : github.data?.fullName,
             isLoading: github.isLoading,
