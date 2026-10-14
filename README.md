@@ -198,6 +198,21 @@ API 상세 경로와 요청/응답 구조는 Wiki > API Specification 을 따릅
 
 **사전 요구사항:** JDK 21, Node 22+, Docker / Docker Compose
 
+### 한 번에 실행 (docker compose)
+
+PostgreSQL, Backend, Frontend를 컨테이너로 함께 띄웁니다.
+
+```bash
+cp .env.example .env   # DB_PASSWORD, JWT_SECRET(32자 이상) 채우기
+docker compose up -d --build
+```
+
+- 서비스: `http://localhost:3000` (Nginx가 `/api`를 Backend로 전달)
+- Swagger: `http://localhost:8080/swagger-ui.html`
+- 종료: `docker compose down` (DB 데이터까지 지우려면 `docker compose down -v`)
+
+### 개별 실행 (개발용)
+
 **Database (PostgreSQL)**
 
 ```bash
