@@ -39,12 +39,11 @@ api.interceptors.response.use(
     const status = error.response?.status
     const requestUrl: string = error.config?.url ?? ''
 
-    // 현재 Backend는 인증 실패와 권한 부족을 모두 403으로 반환한다.
-    // /users/me 는 앱 진입 시 항상 호출되므로, 여기서의 실패만
-    // 저장된 토큰이 무효한 경우로 판단한다.
-    // 개별 기능 요청의 403은 권한 부족이므로 로그인 상태를 유지한다.
-    const isMeRequest = requestUrl.includes('/users/me')
-    const isAuthFailure = (status === 401 || status === 403) && isMeRequest
+    // Backend는 인증 실패(토큰 없음·만료)를 401, 권한 부족을 403으로 나눠 반환한다.
+    // 401이면 어느 API든 로그인 만료로 보고 로그아웃한다. 403은 권한 부족이라 로그인 상태를 유지한다.
+    // 단, 로그인 실패(INVALID_CREDENTIALS)도 401이므로 /auth/ 요청은 제외한다.
+    const isAuthRequest = requestUrl.startsWith('/auth/')
+    const isAuthFailure = status === 401 && !isAuthRequest
 
     if (isAuthFailure) {
       clearAuthStorage()
