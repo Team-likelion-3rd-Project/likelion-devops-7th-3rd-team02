@@ -17,3 +17,7 @@ spring:
       ddl-auto: update
 
     show-sql: true
+
+# 로컬 개발 전용 기본값. dev·prod는 Kubernetes Secret의 JWT_SECRET을 사용한다.
+jwt:
+  secret: ${JWT_SECRET:devflow-local-jwt-secret-key-devflow-local-jwt-secret-key}
