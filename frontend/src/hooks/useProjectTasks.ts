@@ -3,14 +3,17 @@ import { useState } from 'react'
 import { getTasks } from '../api/taskApi'
 import { useAsyncData } from './useAsyncData'
 import { useDebouncedValue } from './useDebouncedValue'
+import { toTaskPage } from '../utils/task'
 import type { TaskListParams, TaskStatus } from '../types/task'
 
 // 설계서 4.5: 한 페이지 12건, 기본 정렬 최근 수정순 (마감일 정렬 없음)
 export const TASK_PAGE_SIZE = 12
 
-// sort 허용 값은 Backend 확인 전 (10.2). Spring Pageable 형식을 가정한다.
+// sort 허용 값 (Backend 확정): updatedAt,desc(기본) / createdAt,desc / title,asc
 export const TASK_SORT_OPTIONS = [
   { value: 'updatedAt,desc', label: '최근 수정순' },
+  { value: 'createdAt,desc', label: '최근 생성순' },
+  { value: 'title,asc', label: '제목순' },
 ] as const
 
 export interface TaskFilters {
@@ -45,7 +48,7 @@ export function useProjectTasks(projectId: number | null) {
 
   const tasks = useAsyncData(
     () =>
-      getTasks(projectId!, params).then((response) => response.data.data ?? []),
+      getTasks(projectId!, params).then((response) => toTaskPage(response.data.data)),
     projectId !== null ? `tasks-${projectId}-${JSON.stringify(params)}` : null,
     '작업 목록을 불러오지 못했습니다.',
   )
@@ -66,8 +69,13 @@ export function useProjectTasks(projectId: number | null) {
     filters.status !== null ||
     filters.assigneeId !== null
 
+  const totalCount = tasks.data?.totalCount
+  const itemCount = tasks.data?.tasks.length ?? 0
+
   return {
-    tasks: tasks.data,
+    tasks: tasks.data?.tasks ?? null,
+    totalCount,
+    statusCounts: tasks.data?.statusCounts,
     isLoading: tasks.isLoading,
     error: tasks.error,
     reload: tasks.reload,
@@ -77,7 +85,10 @@ export function useProjectTasks(projectId: number | null) {
     isFiltered,
     page,
     setPage,
-    // 목록 응답의 전체 건수 포함 여부는 Backend 확인 전 (10.2). 한 페이지가 꽉 차면 다음이 있다고 본다.
-    hasNextPage: (tasks.data?.length ?? 0) === TASK_PAGE_SIZE,
+    // 전체 건수가 오면 그것으로 판단하고, 이전 응답(Task[])이면 한 페이지가 꽉 찼을 때 다음이 있다고 본다.
+    hasNextPage:
+      totalCount !== undefined
+        ? (page + 1) * TASK_PAGE_SIZE < totalCount
+        : itemCount === TASK_PAGE_SIZE,
   }
 }

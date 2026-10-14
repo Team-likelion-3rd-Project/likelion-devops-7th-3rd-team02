@@ -22,6 +22,8 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
   const { members } = useProjectMembers(projectId)
   const {
     tasks,
+    totalCount,
+    statusCounts,
     isLoading,
     error,
     reload,
@@ -78,6 +80,7 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
       <>
         <TaskBoard
           tasks={tasks}
+          statusCounts={statusCounts}
           selectedTaskId={selectedTaskId}
           onSelect={setSelectedTaskId}
         />
@@ -85,6 +88,7 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
           page={page}
           pageSize={TASK_PAGE_SIZE}
           itemCount={tasks.length}
+          totalCount={totalCount}
           hasNextPage={hasNextPage}
           onChange={setPage}
           className="pt-3.5"

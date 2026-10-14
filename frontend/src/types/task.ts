@@ -41,7 +41,7 @@ export interface TaskCreateRequest {
   assigneeId?: number | null
 }
 
-// GET /projects/{projectId}/tasks 검색·필터 (설계서 6.4 계획). sort 허용 값은 Backend 확인 전 (10.2)
+// GET /projects/{projectId}/tasks 검색·필터 (설계서 6.4). page는 0부터 (Spring Pageable)
 export interface TaskListParams {
   keyword?: string
   status?: TaskStatus
@@ -49,4 +49,13 @@ export interface TaskListParams {
   page?: number
   size?: number
   sort?: string
+}
+
+// GET /projects/{projectId}/tasks 응답 (Backend 확정)
+// - totalCount: status를 포함한 모든 조건에 맞는 전체 건수 (페이지 표시)
+// - statusCounts: status 조건만 빼고 나머지 조건을 적용한 상태별 건수 (칸 제목)
+export interface TaskListResponse {
+  tasks: Task[]
+  totalCount: number
+  statusCounts: Record<TaskStatus, number>
 }

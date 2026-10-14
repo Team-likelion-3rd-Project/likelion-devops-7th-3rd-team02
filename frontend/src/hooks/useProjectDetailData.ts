@@ -5,7 +5,7 @@ import { getProject } from '../api/projectApi'
 import { getMembers } from '../api/memberApi'
 import { getTasks } from '../api/taskApi'
 import { getHealth } from '../api/healthApi'
-import { normalizeTask } from '../utils/task'
+import { normalizeTask, toTaskPage } from '../utils/task'
 import type { NormalizedTask } from '../utils/task'
 import { getErrorMessage } from '../utils/error'
 import type { Project } from '../types/project'
@@ -105,7 +105,7 @@ export function useProjectDetailData(projectId: number | string) {
       .then((response) => {
         if (cancelled) return
 
-        const tasks = response.data.data ?? []
+        const { tasks } = toTaskPage(response.data.data)
 
         setTaskList(tasks.map(normalizeTask))
         setTaskError('')
