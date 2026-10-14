@@ -1,7 +1,8 @@
+import CommitLabel from './CommitLabel'
 import HistoryTable from './HistoryTable'
 import type { HistoryColumn } from './HistoryTable'
 import StatusBadge from '../common/StatusBadge'
-import { formatDayTime, formatDuration, shortSha } from '../../utils/date'
+import { formatDayTime, formatDuration } from '../../utils/date'
 import { PIPELINE_STAGES, PIPELINE_STATUS } from '../../utils/status'
 import type { Pipeline } from '../../types/pipeline'
 
@@ -20,7 +21,7 @@ function statusLabel(pipeline: Pipeline) {
 const COLUMNS: HistoryColumn<Pipeline>[] = [
   { header: '번호', render: (row) => `#${row.number}` },
   { header: '브랜치', render: (row) => row.branch, className: mono },
-  { header: '커밋', render: (row) => shortSha(row.commitSha), className: mono },
+  { header: '커밋', render: (row) => <CommitLabel sha={row.commitSha} message={row.commitMessage} /> },
   {
     header: '상태',
     render: (row) => (

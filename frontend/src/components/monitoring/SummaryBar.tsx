@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 import { ErrorMessage, Loading } from '../common/PanelState'
-import { RANGE_LABEL, RANGE_MINUTES } from '../../utils/monitoring'
+import { formatMetric, RANGE_LABEL, RANGE_MINUTES } from '../../utils/monitoring'
 import type { MonitoringRange, MonitoringSummary } from '../../types/monitoring'
 
 const formatSeconds = (ms: number) => `${(ms / 1000).toFixed(1)}초`
@@ -45,7 +45,7 @@ function SummaryBar({
           value={summary.httpRequestCount.toLocaleString('ko-KR')}
           note={<span className="text-muted">분당 평균 {perMinute.toLocaleString('ko-KR')}</span>}
         />
-        <Metric label="오류율" value={`${summary.errorRate}%`} />
+        <Metric label="오류율" value={`${formatMetric(summary.errorRate)}%`} />
         <Metric label="평균 응답 시간" value={formatSeconds(summary.avgResponseTimeMs)} />
         <Metric
           label="레플리카"

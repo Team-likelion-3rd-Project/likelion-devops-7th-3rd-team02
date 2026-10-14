@@ -1,9 +1,10 @@
 import { Check, X } from 'lucide-react'
 
+import CommitLabel from './CommitLabel'
 import Panel from '../common/Panel'
 import StatusBadge from '../common/StatusBadge'
 import { EmptyState, ErrorMessage, Loading } from '../common/PanelState'
-import { formatDayTime, formatDuration, shortSha } from '../../utils/date'
+import { formatDayTime, formatDuration } from '../../utils/date'
 import { PIPELINE_STAGES, PIPELINE_STATUS } from '../../utils/status'
 import type { Pipeline, PipelineStage, PipelineStatus } from '../../types/pipeline'
 
@@ -97,8 +98,7 @@ function PipelineStrip({
         </ol>
 
         <div className="flex flex-wrap items-center gap-2.5 px-[18px] pb-[18px]">
-          <span className="font-mono text-[12.5px]">{shortSha(pipeline.commitSha)}</span>
-          {pipeline.commitMessage && <span>{pipeline.commitMessage}</span>}
+          <CommitLabel sha={pipeline.commitSha} message={pipeline.commitMessage} />
           <span className="text-muted">{pipeline.branch}</span>
           <span className="text-muted">시작 {formatDayTime(pipeline.startedAt)}</span>
         </div>

@@ -1,5 +1,5 @@
 import type { BadgeTone } from '../components/common/StatusBadge'
-import type { DeploymentStatus } from '../types/deployment'
+import type { DeploymentStatus, HealthStatus } from '../types/deployment'
 import type { IncidentSeverity } from '../types/incident'
 import type { PipelineStageName, PipelineStatus } from '../types/pipeline'
 import type { PullRequestStatus, TaskStatus } from '../types/task'
@@ -37,6 +37,13 @@ export const CURRENT_DEPLOYMENT_STATUS: Record<DeploymentStatus, StatusMeta> = {
   SUCCESS: { label: '정상 실행 중', tone: 'ok' },
   FAILED: { label: '실패', tone: 'err' },
   IN_PROGRESS: { label: '배포 중', tone: 'info' },
+}
+
+// 실행 중인 애플리케이션 상태 (시안: 정상 실행 중). 최신 배포의 health
+export const HEALTH_STATUS: Record<HealthStatus, StatusMeta> = {
+  HEALTHY: { label: '정상 실행 중', tone: 'ok' },
+  DEGRADED: { label: '일부 이상', tone: 'warn' },
+  DOWN: { label: '중단됨', tone: 'err' },
 }
 
 // 파이프라인 상태 (시안 이력 표: 진행 중 / 성공 / 실패). 상태 값은 확정 전 가정 (types/pipeline.ts)

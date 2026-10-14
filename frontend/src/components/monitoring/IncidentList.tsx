@@ -6,6 +6,7 @@ import { EmptyState, ErrorMessage, Loading } from '../common/PanelState'
 import { buttonClass, primaryButtonClass } from '../common/styles'
 import { formatSince } from '../../utils/date'
 import { getErrorMessage } from '../../utils/error'
+import { incidentSummary } from '../../utils/monitoring'
 import { INCIDENT_SEVERITY } from '../../utils/status'
 import type { Incident } from '../../types/incident'
 import type { ProjectMember } from '../../types/member'
@@ -65,6 +66,7 @@ function IncidentList({
         {openIncidents.map((incident) => {
           const severity = INCIDENT_SEVERITY[incident.severity]
           const assignee = memberName(incident.assigneeId)
+          const summary = incidentSummary(incident)
 
           return (
             <li
@@ -75,10 +77,14 @@ function IncidentList({
 
               <div className="min-w-0 flex-1">
                 <b className="block font-semibold">{incident.title}</b>
+                {summary && <span className="block text-[13px]">{summary}</span>}
                 <span className="text-[12.5px] text-muted">
                   {formatSince(incident.occurredAt)}, 출처 {incident.source}
                 </span>
               </div>
+
+              {/* firing이 false면 알림이 풀린 상태다. 확인한 장애는 30분 뒤 자동으로 해결된다 (Backend). */}
+              {incident.firing === false && <StatusBadge tone="muted">현재 안정화됨</StatusBadge>}
 
               <span className={`text-[12.5px] ${assignee ? '' : 'text-muted'}`}>
                 {assignee ?? '담당자 없음'}

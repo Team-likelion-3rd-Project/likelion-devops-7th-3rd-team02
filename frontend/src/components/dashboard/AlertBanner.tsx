@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import { focusRing } from '../common/styles'
+import { incidentSummary } from '../../utils/monitoring'
 import type { Incident } from '../../types/incident'
 
 // 설계서 4.4: 확인되지 않은(OPEN) 장애 건수와 요약. 없으면 표시하지 않는다.
@@ -17,6 +18,9 @@ function AlertBanner({
     return null
   }
 
+  const first = openIncidents[0]
+  const summary = incidentSummary(first)
+
   return (
     <Link
       to={`/projects/${projectId}/monitoring`}
@@ -25,7 +29,10 @@ function AlertBanner({
       <b className="font-semibold">
         주의가 필요한 항목이 {openIncidents.length}건 있어요.
       </b>
-      <span>{openIncidents[0].title} 모니터링에서 확인하기</span>
+      <span>
+        {first.title}
+        {summary && ` · ${summary}`} · 모니터링에서 확인하기
+      </span>
     </Link>
   )
 }

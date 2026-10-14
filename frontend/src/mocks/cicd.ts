@@ -82,9 +82,10 @@ const PIPELINES: Pipeline[] = [
 ]
 
 const DEPLOYMENTS: Deployment[] = [
-  { id: 14, revision: 14, imageTag: 'v0.9.3-7f3c2a1', commitSha: '7f3c2a1d9e', environment: 'production', status: 'SUCCESS', deployedAt: at(12) },
-  { id: 13, revision: 13, imageTag: 'v0.9.2-b91d04e', commitSha: 'b91d04e5a2', environment: 'production', status: 'SUCCESS', deployedAt: at(60 * 20) },
-  { id: 12, revision: 12, imageTag: 'v0.9.1-4a8e6c3', commitSha: '4a8e6c3f71', environment: 'production', status: 'FAILED', deployedAt: at(60 * 26) },
+  // health는 최신 배포에만 온다. commitMessage는 못 가져오면 null (Backend 확정)
+  { id: 14, revision: 14, imageTag: 'v0.9.3-7f3c2a1', commitSha: '7f3c2a1d9e', commitMessage: '로그인 만료 처리 추가', environment: 'production', status: 'SUCCESS', deployedAt: at(12), health: 'HEALTHY' },
+  { id: 13, revision: 13, imageTag: 'v0.9.2-b91d04e', commitSha: 'b91d04e5a2', commitMessage: '배포 이력 페이지 추가', environment: 'production', status: 'SUCCESS', deployedAt: at(60 * 20) },
+  { id: 12, revision: 12, imageTag: 'v0.9.1-4a8e6c3', commitSha: '4a8e6c3f71', commitMessage: null, environment: 'production', status: 'FAILED', deployedAt: at(60 * 26) },
 ]
 
 export const fetchMockPipelines = (params?: PageParams) =>
