@@ -1,7 +1,7 @@
 import TrendChart from './TrendChart'
 import Panel from '../common/Panel'
 import { EmptyState, ErrorMessage, Loading } from '../common/PanelState'
-import { RANGE_LABEL } from '../../utils/monitoring'
+import { formatMetric, RANGE_LABEL } from '../../utils/monitoring'
 import type { MetricPoint, MonitoringRange } from '../../types/monitoring'
 
 const pad = (value: number) => String(value).padStart(2, '0')
@@ -16,7 +16,7 @@ const timeLabels = (series: MetricPoint[]) => {
   })
 }
 
-const latest = (values: number[]) => values[values.length - 1] ?? 0
+const latest = (values: number[]) => formatMetric(values[values.length - 1] ?? 0)
 
 // 설계서 4.8 추이: 오류율, 응답 시간, CPU와 메모리 3종 (요청 수 추이·기준선 없음)
 function TrendPanel({

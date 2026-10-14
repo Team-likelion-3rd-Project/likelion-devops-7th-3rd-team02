@@ -18,6 +18,7 @@ interface IntegrationRowProps {
   error: string
   onRetry: () => void
   onConnect: (input: string) => Promise<void>
+  canConnect: boolean
 }
 
 // 연결됨: 경로 + 배지 / 미연결: 입력 영역 (설계서 9.7, 시안 보드 없음)
@@ -31,6 +32,7 @@ function IntegrationRow({
   error,
   onRetry,
   onConnect,
+  canConnect,
 }: IntegrationRowProps) {
   const [input, setInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -67,6 +69,15 @@ function IntegrationRow({
       )
     }
 
+    // 연결 등록·해제는 OWNER만 할 수 있다 (Backend 확정). MEMBER에게는 입력 영역을 보여주지 않는다.
+    if (!canConnect) {
+      return (
+        <p className="text-[13px] text-muted">
+          {emptyMessage} 연결은 프로젝트 소유자만 할 수 있어요.
+        </p>
+      )
+    }
+
     return (
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <p className="text-[13px] text-muted">{emptyMessage}</p>
@@ -99,14 +110,20 @@ function IntegrationRow({
   )
 }
 
+type RowInput = Omit<
+  IntegrationRowProps,
+  'provider' | 'connectedLabel' | 'emptyMessage' | 'placeholder' | 'canConnect'
+>
+
 // 설계서 4.7 저장소 연결: GitHub 연결됨, GitLab 매핑됨 (변경 버튼, 기본 브랜치 없음)
-// 연결 권한(OWNER 한정 여부)은 확정 전이라 모두에게 표시하고 Backend 403을 오류로 보여준다.
 function IntegrationPanel({
   github,
   gitlab,
+  canConnect,
 }: {
-  github: Omit<IntegrationRowProps, 'provider' | 'connectedLabel' | 'emptyMessage' | 'placeholder'>
-  gitlab: Omit<IntegrationRowProps, 'provider' | 'connectedLabel' | 'emptyMessage' | 'placeholder'>
+  github: RowInput
+  gitlab: RowInput
+  canConnect: boolean
 }) {
   return (
     <Panel title="저장소 연결">
@@ -116,6 +133,7 @@ function IntegrationPanel({
           connectedLabel="연결됨"
           emptyMessage="저장소가 연결되어 있지 않아요."
           placeholder="https://github.com/owner/repo"
+          canConnect={canConnect}
           {...github}
         />
         <IntegrationRow
@@ -123,6 +141,7 @@ function IntegrationPanel({
           connectedLabel="매핑됨"
           emptyMessage="프로젝트가 연결되어 있지 않아요."
           placeholder="group/project"
+          canConnect={canConnect}
           {...gitlab}
         />
       </div>

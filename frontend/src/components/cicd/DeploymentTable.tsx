@@ -1,7 +1,8 @@
+import CommitLabel from './CommitLabel'
 import HistoryTable from './HistoryTable'
 import type { HistoryColumn } from './HistoryTable'
 import StatusBadge from '../common/StatusBadge'
-import { formatDayTime, shortSha } from '../../utils/date'
+import { formatDayTime } from '../../utils/date'
 import { DEPLOYMENT_STATUS } from '../../utils/status'
 import type { Deployment } from '../../types/deployment'
 
@@ -10,7 +11,7 @@ const mono = 'font-mono text-[12.5px]'
 const COLUMNS: HistoryColumn<Deployment>[] = [
   { header: '리비전', render: (row) => row.revision, className: mono },
   { header: '이미지 태그', render: (row) => row.imageTag, className: mono },
-  { header: '커밋', render: (row) => shortSha(row.commitSha), className: mono },
+  { header: '커밋', render: (row) => <CommitLabel sha={row.commitSha} message={row.commitMessage} /> },
   { header: '환경', render: (row) => row.environment },
   {
     header: '상태',

@@ -52,6 +52,9 @@ export const fetchMockIncidents = () =>
       occurredAt: minutesAgo(12),
       source: 'Alertmanager',
       assigneeId: null,
+      summary: 'p95 1.8초 (기준 1.0초)',
+      metric: { currentValue: 1.8, threshold: 1.0, unit: 's' },
+      firing: true,
     },
     {
       id: 2,
@@ -61,5 +64,8 @@ export const fetchMockIncidents = () =>
       occurredAt: minutesAgo(90),
       source: 'Alertmanager',
       assigneeId: 1,
+      // summary가 없으면 metric으로 요약을 만든다
+      metric: { currentValue: 6, threshold: 3, unit: '회' },
+      firing: false,
     },
   ])

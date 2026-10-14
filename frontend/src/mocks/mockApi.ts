@@ -143,6 +143,13 @@ const membersOf = (projectId: number): ProjectMember[] =>
       return { memberId: projectId * 100 + index, userId: user.userId, email: user.email, name: user.name, role: item.role }
     })
 
+// sort 허용 값: updatedAt,desc(기본) / createdAt,desc / title,asc
+const compareTasks = (sort = 'updatedAt,desc') => (a: Task, b: Task) => {
+  if (sort === 'title,asc') return a.title.localeCompare(b.title, 'ko')
+  if (sort === 'createdAt,desc') return b.createdAt.localeCompare(a.createdAt)
+  return b.updatedAt.localeCompare(a.updatedAt)
+}
+
 const findTask = (projectId: number, taskId: number) => {
   const found = tasks.find((item) => item.id === taskId && item.projectId === projectId)
   if (!found) throw new MockHttpError(404, '업무를 찾을 수 없습니다.', 'TASK_NOT_FOUND')
@@ -213,13 +220,17 @@ const routes: [string, string, Handler][] = [
     findProject(params.projectId)
     const page = Number(query.page ?? 0)
     const size = Number(query.size ?? 1000)
-    return tasks
+    // statusCounts는 status 조건만 빼고 센다 (Backend 확정)
+    const matched = tasks
       .filter((item) => item.projectId === params.projectId)
       .filter((item) => !query.keyword || item.title.includes(query.keyword))
-      .filter((item) => !query.status || item.status === query.status)
       .filter((item) => !query.assigneeId || item.assigneeId === Number(query.assigneeId))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      .slice(page * size, page * size + size)
+    const statusCounts: Record<TaskStatus, number> = { TODO: 0, IN_PROGRESS: 0, DONE: 0 }
+    matched.forEach((item) => { statusCounts[item.status] += 1 })
+    const filtered = matched
+      .filter((item) => !query.status || item.status === query.status)
+      .sort(compareTasks(query.sort))
+    return { tasks: filtered.slice(page * size, page * size + size), totalCount: filtered.length, statusCounts }
   }],
   ['post', '/projects/:projectId/tasks', ({ params, body }) => {
     const assigneeId = (body.assigneeId as number | null) ?? null
@@ -364,6 +375,10 @@ export async function mockAdapter(config: InternalAxiosRequestConfig): Promise<A
   })
 
   const route = matchRoute(method, path)
+
+  // 새로고침하면 메모리가 처음으로 돌아가므로, 로그인한 사용자는 토큰(mock-token-{userId})에서 다시 찾는다.
+  const tokenUserId = Number(String(config.headers?.Authorization ?? '').match(/mock-token-(\d+)/)?.[1])
+  if (users.some((user) => user.userId === tokenUserId)) currentUserId = tokenUserId
 
   try {
     if (!route) throw new MockHttpError(404, `목 모드에 없는 API입니다: ${method.toUpperCase()} ${path}`, 'MOCK_NOT_FOUND')

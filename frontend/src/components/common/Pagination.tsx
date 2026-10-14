@@ -3,7 +3,7 @@ import { focusRing } from './styles'
 const pageButtonClass = `flex h-[30px] min-w-[30px] cursor-pointer items-center justify-center rounded-lg border border-transparent px-2 hover:bg-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent ${focusRing}`
 
 // 시안 .pager: 왼쪽 범위 표시, 오른쪽 이전 / 현재 페이지 / 다음
-// 전체 건수는 목록 응답 확정 전 (설계서 10.2)이라 있을 때만 표시한다.
+// 전체 건수는 응답에 있을 때만 표시한다.
 function Pagination({
   page,
   pageSize,

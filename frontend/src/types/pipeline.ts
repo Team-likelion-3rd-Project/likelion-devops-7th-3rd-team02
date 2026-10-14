@@ -6,7 +6,7 @@ export type { PageParams }
 export type PipelineStageName = 'BUILD' | 'TEST' | 'IMAGE' | 'VERIFY' | 'DEPLOY'
 
 // 설계서 6.7 파이프라인 응답: 번호, 상태, 브랜치, 커밋 SHA, 시작·완료 시각, 단계별 상태, collectedAt
-// 필드명과 상태 값은 Backend 확정 전 가정이다. 커밋 메시지는 포함 여부 확인 중 (10.2).
+// 필드명과 상태 값은 Backend 확정 전 가정이다. 커밋 메시지는 못 가져오면 null (Backend 확정).
 export type PipelineStatus = 'RUNNING' | 'SUCCESS' | 'FAILED' | 'PENDING'
 
 export interface PipelineStage {

@@ -2,6 +2,7 @@ import { getTasks } from '../api/taskApi'
 import { getDeployments } from '../api/deploymentApi'
 import { getIncidents } from '../api/incidentApi'
 import { useAsyncData } from './useAsyncData'
+import { toTaskPage } from '../utils/task'
 
 // 설계서 4.4: 내 작업, 최근 배포, 장애 배너는 현재 선택된 프로젝트 기준
 export function useDashboardData(
@@ -11,7 +12,7 @@ export function useDashboardData(
   const myTasks = useAsyncData(
     () =>
       getTasks(projectId!, { assigneeId: userId! }).then(
-        (response) => response.data.data ?? [],
+        (response) => toTaskPage(response.data.data).tasks,
       ),
     projectId !== null && userId !== null ? `tasks-${projectId}-${userId}` : null,
     '내 작업을 불러오지 못했습니다.',

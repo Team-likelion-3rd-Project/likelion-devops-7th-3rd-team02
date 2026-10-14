@@ -14,4 +14,16 @@ export interface Incident {
   occurredAt: string
   source: string
   assigneeId: number | null
+  // 아래 세 필드는 Backend 확정 (선택 필드)
+  // summary: 화면용 한 줄 요약 (예: "p95 1.8초 (기준 1.0초)")
+  summary?: string | null
+  metric?: IncidentMetric | null
+  // false면 알림이 풀린 상태 ("현재 안정화됨")
+  firing?: boolean
+}
+
+export interface IncidentMetric {
+  currentValue: number
+  threshold: number
+  unit: string
 }
