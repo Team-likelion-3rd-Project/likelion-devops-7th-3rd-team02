@@ -8,7 +8,7 @@ import { focusRing } from './styles'
 import { useProjectContext } from '../../hooks/useProjectContext'
 import { projectRoleLabel } from '../../utils/projectRole'
 
-const itemClass = `flex w-full cursor-pointer items-start gap-2 rounded-[7px] px-2.5 py-2 text-left hover:bg-hover ${focusRing}`
+const itemClass = `flex w-full cursor-pointer items-center gap-2 rounded-[7px] px-2.5 py-2 text-left hover:bg-hover ${focusRing}`
 
 // 설계서 4.1: 사이드바 상단의 프로젝트 전환. 프로젝트를 고르는 곳은 여기 한 곳이다.
 // 프로젝트 화면에서 바꾸면 보던 메뉴를 유지한다 (작업 보드 → 고른 프로젝트의 작업 보드).
@@ -125,10 +125,12 @@ function ProjectSwitcher() {
                       <Check
                         aria-hidden="true"
                         size={15}
-                        className={`mt-[3px] flex-none text-accent ${isCurrent ? '' : 'invisible'}`}
+                        className={`flex-none text-accent ${isCurrent ? '' : 'invisible'}`}
                       />
-                      <span className="min-w-0 flex-1 break-words">{project.name}</span>
-                      <span className="flex-none pt-px text-[12px] font-normal text-muted">
+                      <span title={project.name} className="min-w-0 flex-1 truncate">
+                        {project.name}
+                      </span>
+                      <span className="flex-none text-[12px] font-normal text-muted">
                         {projectRoleLabel(project, currentUser?.userId)}
                       </span>
                     </button>
@@ -150,7 +152,7 @@ function ProjectSwitcher() {
               }}
               className={`${itemClass} font-medium text-accent`}
             >
-              <Plus aria-hidden="true" size={15} className="mt-[3px] flex-none" />
+              <Plus aria-hidden="true" size={15} className="flex-none" />
               새 프로젝트
             </button>
           </div>

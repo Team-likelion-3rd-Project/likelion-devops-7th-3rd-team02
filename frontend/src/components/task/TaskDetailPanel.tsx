@@ -28,7 +28,7 @@ function TaskDetailPanel({
 }) {
   return (
     <Panel
-      title={<span className="break-keep">{task.title}</span>}
+      title={<span className="break-keep [overflow-wrap:anywhere]">{task.title}</span>}
       action={
         <StatusBadge tone={TASK_STATUS[task.status].tone}>
           {TASK_STATUS[task.status].label}
@@ -37,7 +37,7 @@ function TaskDetailPanel({
     >
       <div className="flex flex-col gap-[18px] px-[18px] py-4">
         {task.description && (
-          <p className="break-keep whitespace-pre-line">{task.description}</p>
+          <p className="break-keep whitespace-pre-line [overflow-wrap:anywhere]">{task.description}</p>
         )}
 
         <div className="flex flex-col gap-2">

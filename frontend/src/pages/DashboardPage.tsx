@@ -5,8 +5,9 @@ import EnvironmentSummary from '../components/dashboard/EnvironmentSummary'
 import MyTaskList from '../components/dashboard/MyTaskList'
 import RecentDeployList from '../components/dashboard/RecentDeployList'
 import ProjectCreateModal from '../components/project/ProjectCreateModal'
+import ProjectInfoModal from '../components/project/ProjectInfoModal'
 import { EmptyState, ErrorMessage, Loading } from '../components/common/PanelState'
-import { primaryButtonClass } from '../components/common/styles'
+import { primaryButtonClass, textLinkClass } from '../components/common/styles'
 import { useDashboardData } from '../hooks/useDashboardData'
 import { useProjectContext } from '../hooks/useProjectContext'
 import { formatClock } from '../utils/date'
@@ -29,6 +30,7 @@ function DashboardPage() {
 
   const collectedAt = deployments.data?.collectedAt
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isInfoOpen, setIsInfoOpen] = useState(false)
 
   const title = currentUser ? `${currentUser.name}님, 오늘 확인할 것` : '오늘 확인할 것'
 
@@ -60,8 +62,14 @@ function DashboardPage() {
     <>
       <div className="mb-5">
         <h1 className="text-[24px] font-bold tracking-[-0.02em]">{title}</h1>
-        <p className="mt-1 flex flex-wrap gap-x-3 text-[13px] text-muted">
-          <span>{currentProject.name}</span>
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 text-[13px] text-muted">
+          <span title={currentProject.name} className="max-w-[420px] truncate">
+            {currentProject.name}
+          </span>
+          {/* 설명, 소유자, 팀원 수, 저장소 연결 등은 프로젝트 정보 모달에서 본다 (설계서 4.4) */}
+          <button type="button" onClick={() => setIsInfoOpen(true)} className={`cursor-pointer ${textLinkClass}`}>
+            프로젝트 정보
+          </button>
           {collectedAt && <span>마지막 수집 {formatClock(collectedAt)}</span>}
         </p>
       </div>
@@ -89,6 +97,14 @@ function DashboardPage() {
             onRetry={deployments.reload}
           />
         </div>
+      )}
+
+      {isInfoOpen && (
+        <ProjectInfoModal
+          project={currentProject}
+          userId={currentUser?.userId}
+          onClose={() => setIsInfoOpen(false)}
+        />
       )}
     </>
   )
