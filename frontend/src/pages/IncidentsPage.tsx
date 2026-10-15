@@ -9,18 +9,26 @@ import { getMyIncidents } from '../api/incidentApi'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { useIncidentContext } from '../hooks/useIncidentContext'
 import { formatDayTime, formatRelativeTime, formatSince } from '../utils/date'
-import { incidentSummary, needsCheck } from '../utils/monitoring'
-import { INCIDENT_SEVERITY } from '../utils/status'
+import { incidentSummary } from '../utils/monitoring'
+import { INCIDENT_SEVERITY, INCIDENT_STATUS } from '../utils/status'
 import type { Incident } from '../types/incident'
 
-type Filter = 'open' | 'needsCheck' | 'resolved'
+// 상태 흐름 순서로 겹치지 않게 나눈다: 확인 필요(OPEN) → 해결 중(ACKNOWLEDGED) → 최근 해결(RESOLVED)
+// 기본은 확인 필요라서 사이드바 배지 숫자와 처음 보이는 건수가 같다.
+type Filter = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'
 
 const FILTERS: { value: Filter; label: string }[] = [
-  { value: 'open', label: '해결 안 됨' },
-  { value: 'needsCheck', label: '확인 필요' },
+  { value: 'OPEN', label: '확인 필요' },
+  { value: 'ACKNOWLEDGED', label: '해결 중' },
   // 해결된 장애는 API가 최근 24시간만 돌려준다 (I7 status=RESOLVED)
-  { value: 'resolved', label: '최근 해결 (24시간)' },
+  { value: 'RESOLVED', label: '최근 해결 (24시간)' },
 ]
+
+const EMPTY_MESSAGE: Record<Filter, string> = {
+  OPEN: '확인이 필요한 장애가 없어요.',
+  ACKNOWLEDGED: '해결 중인 장애가 없어요.',
+  RESOLVED: '최근 24시간 동안 해결된 장애가 없어요.',
+}
 
 // 응답 순서(발생 최신순)를 지키며 프로젝트별로 묶는다.
 const groupByProject = (incidents: Incident[]) => {
@@ -37,28 +45,27 @@ const groupByProject = (incidents: Incident[]) => {
 // 읽기 전용이다. 장애를 누르면 그 프로젝트의 모니터링으로 이동하고, 확인·담당자 지정은 거기서 한다.
 function IncidentsPage() {
   const open = useIncidentContext()
-  const [filter, setFilter] = useState<Filter>('open')
+  const [filter, setFilter] = useState<Filter>('OPEN')
 
   // 최근 해결은 고를 때만 따로 불러온다.
   const resolved = useAsyncData(
     () => getMyIncidents(['RESOLVED']).then((response) => response.data.data),
-    filter === 'resolved' ? 'my-incidents-resolved' : null,
+    filter === 'RESOLVED' ? 'my-incidents-resolved' : null,
     '해결된 장애를 불러오지 못했습니다.',
   )
 
-  const isResolvedView = filter === 'resolved'
+  const isResolvedView = filter === 'RESOLVED'
   const source = isResolvedView ? resolved : open
-  const data = open.data
 
-  const incidents = (source.data?.incidents ?? []).filter((incident) =>
-    filter === 'needsCheck' ? needsCheck(incident) : true,
-  )
+  const incidents = (source.data?.incidents ?? []).filter((incident) => incident.status === filter)
 
-  const EMPTY_MESSAGE: Record<Filter, string> = {
-    open: '해결되지 않은 장애가 없어요.',
-    needsCheck: '확인이 필요한 장애가 없어요.',
-    resolved: '최근 24시간 동안 해결된 장애가 없어요.',
-  }
+  // 칩 건수: 확인 필요는 openCount(배지와 같은 값), 해결 중은 목록에서 센다.
+  const counts: Partial<Record<Filter, number>> = open.data
+    ? {
+        OPEN: open.data.openCount,
+        ACKNOWLEDGED: open.data.incidents.filter((incident) => incident.status === 'ACKNOWLEDGED').length,
+      }
+    : {}
 
   const renderBody = () => {
     if (source.error && !source.data) return <ErrorMessage message={source.error} onRetry={source.reload} />
@@ -111,13 +118,9 @@ function IncidentsPage() {
                       <span className={`text-[12.5px] ${incident.assigneeId === null ? 'text-muted' : ''}`}>
                         {incident.assigneeId === null ? '담당자 없음' : '담당자 지정됨'}
                       </span>
-                      {isResolvedView ? (
-                        <StatusBadge tone="muted">해결됨</StatusBadge>
-                      ) : needsCheck(incident) ? (
-                        <StatusBadge tone="warn">확인 필요</StatusBadge>
-                      ) : (
-                        <StatusBadge tone="ok">확인함</StatusBadge>
-                      )}
+                      <StatusBadge tone={INCIDENT_STATUS[incident.status].tone}>
+                        {INCIDENT_STATUS[incident.status].label}
+                      </StatusBadge>
                     </Link>
                   </li>
                 )
@@ -155,7 +158,7 @@ function IncidentsPage() {
                 }`}
               >
                 {item.label}
-                {item.value === 'needsCheck' && data && data.openCount > 0 && ` ${data.openCount}`}
+                {counts[item.value] !== undefined && ` ${counts[item.value]}`}
               </button>
             )
           })}

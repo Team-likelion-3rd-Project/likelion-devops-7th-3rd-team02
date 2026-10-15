@@ -1,6 +1,6 @@
 import type { BadgeTone } from '../components/common/StatusBadge'
 import type { DeploymentStatus, HealthStatus } from '../types/deployment'
-import type { IncidentSeverity } from '../types/incident'
+import type { IncidentSeverity, IncidentStatus } from '../types/incident'
 import type { PipelineStageName, PipelineStatus } from '../types/pipeline'
 import type { PullRequestStatus, TaskStatus } from '../types/task'
 
@@ -61,6 +61,13 @@ export const PIPELINE_STAGES: { name: PipelineStageName; label: string; runningL
   { name: 'VERIFY', label: 'Verify', runningLabel: '검증 중' },
   { name: 'DEPLOY', label: 'Deploy', runningLabel: '배포 중' },
 ]
+
+// 장애 상태: 모니터링과 전체 장애가 같은 말을 쓴다 (설계서 4.8, 4.11)
+export const INCIDENT_STATUS: Record<IncidentStatus, StatusMeta> = {
+  OPEN: { label: '확인 필요', tone: 'warn' },
+  ACKNOWLEDGED: { label: '해결 중', tone: 'info' },
+  RESOLVED: { label: '해결됨', tone: 'ok' },
+}
 
 // 장애 심각도 (시안: 경고, 긴급). 값은 확정 전 가정 (types/incident.ts)
 export const INCIDENT_SEVERITY: Record<IncidentSeverity, StatusMeta> = {
