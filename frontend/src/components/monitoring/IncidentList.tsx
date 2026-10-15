@@ -6,7 +6,7 @@ import { EmptyState, ErrorMessage, Loading } from '../common/PanelState'
 import { buttonClass, primaryButtonClass } from '../common/styles'
 import { formatSince } from '../../utils/date'
 import { getErrorMessage } from '../../utils/error'
-import { incidentSummary } from '../../utils/monitoring'
+import { incidentSummary, isOpenIncident, needsCheck } from '../../utils/monitoring'
 import { INCIDENT_SEVERITY } from '../../utils/status'
 import type { Incident } from '../../types/incident'
 import type { ProjectMember } from '../../types/member'
@@ -37,8 +37,8 @@ function IncidentList({
   const [actionError, setActionError] = useState('')
 
   // 열린 장애: 해결되지 않은 장애
-  const openIncidents = (incidents ?? []).filter((incident) => incident.status !== 'RESOLVED')
-  const uncheckedCount = openIncidents.filter((incident) => incident.status === 'OPEN').length
+  const openIncidents = (incidents ?? []).filter(isOpenIncident)
+  const uncheckedCount = openIncidents.filter(needsCheck).length
 
   const memberName = (userId: number | null) =>
     members.find((member) => member.userId === userId)?.name ?? null

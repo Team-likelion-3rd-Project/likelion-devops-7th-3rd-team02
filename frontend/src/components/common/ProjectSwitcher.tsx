@@ -84,7 +84,7 @@ function ProjectSwitcher() {
   const triggerLabel = currentProject?.name ?? (isLoading ? '불러오는 중' : '프로젝트 없음')
 
   return (
-    <div ref={rootRef} className="relative min-w-0 flex-1" onKeyDown={handleKeyDown}>
+    <div ref={rootRef} className="relative min-w-0" onKeyDown={handleKeyDown}>
       <button
         ref={triggerRef}
         type="button"
@@ -106,7 +106,7 @@ function ProjectSwitcher() {
       {isOpen && (
         <div
           id="project-switcher-list"
-          className="absolute top-[calc(100%+6px)] left-[-42px] z-20 w-[200px] rounded-[10px] border border-line bg-panel p-1.5 shadow-[0_8px_24px_rgba(22,27,38,0.16)]"
+          className="absolute top-[calc(100%+6px)] right-0 left-0 z-20 rounded-[10px] border border-line bg-panel p-1.5 shadow-[0_8px_24px_rgba(22,27,38,0.16)]"
         >
           {projectList.length > 0 ? (
             <ul aria-label="프로젝트" className="max-h-[280px] overflow-y-auto">

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, TriangleAlert } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 
 import logoMark from '../../assets/logo-mark.svg'
@@ -7,6 +7,7 @@ import ProfileModal from './ProfileModal'
 import ProjectSwitcher from './ProjectSwitcher'
 import MemberModal from '../project/MemberModal'
 import ThemeToggle from './ThemeToggle'
+import { useIncidentContext } from '../../hooks/useIncidentContext'
 import { useProjectContext } from '../../hooks/useProjectContext'
 import { useProjectMembers } from '../../hooks/useProjectMembers'
 import { clearAuthStorage } from '../../utils/authStorage'
@@ -31,6 +32,8 @@ function Sidebar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isMemberOpen, setIsMemberOpen] = useState(false)
   const members = useProjectMembers(currentProject?.id ?? null)
+  const { data: myIncidents } = useIncidentContext()
+  const openCount = myIncidents?.openCount ?? 0
 
   const isOwner = isProjectOwner(currentProject, currentUser?.userId)
 
@@ -49,7 +52,8 @@ function Sidebar() {
   return (
     <aside className="flex w-[228px] flex-none flex-col gap-5 border-r border-line bg-chrome px-3.5 py-5 max-[900px]:hidden">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
+        {/* 맨 윗줄은 모든 프로젝트에 걸친 영역: 로고(대시보드), 전체 장애 (설계서 4.1) */}
+        <div className="flex items-center justify-between gap-2">
           {/* 로고는 대시보드로 가는 지름길이다. 대시보드 메뉴도 그대로 둔다. */}
           <Link
             to="/projects"
@@ -59,8 +63,32 @@ function Sidebar() {
           >
             <img src={logoMark} alt="" className="h-[34px] w-[34px]" />
           </Link>
-          <ProjectSwitcher />
+
+          {/* 확인이 필요한 장애가 있을 때만 숫자 배지를 보여준다. */}
+          <NavLink
+            to="/incidents"
+            aria-label={openCount > 0 ? `전체 장애, 확인 필요 ${openCount}건` : '전체 장애'}
+            title="전체 장애"
+            className={({ isActive }) =>
+              `relative flex h-[34px] w-[34px] flex-none items-center justify-center rounded-lg ${focusRing} ${
+                isActive ? 'bg-accent-bg text-accent' : openCount > 0 ? 'text-err hover:bg-hover' : 'text-muted hover:bg-hover'
+              }`
+            }
+          >
+            <TriangleAlert aria-hidden="true" size={19} />
+            {openCount > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-err px-1 text-[11px] font-bold text-white"
+              >
+                {openCount > 99 ? '99+' : openCount}
+              </span>
+            )}
+          </NavLink>
         </div>
+
+        {/* 여기부터 선택한 프로젝트 영역 */}
+        <ProjectSwitcher />
 
         {/* 팀원 박스: 내 역할과 팀원 수, 누르면 팀원 목록 (설계서 10.4) */}
         {currentProject && (

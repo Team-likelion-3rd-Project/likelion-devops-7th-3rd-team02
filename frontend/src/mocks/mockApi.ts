@@ -158,7 +158,17 @@ const findTask = (projectId: number, taskId: number) => {
 
 const incidentsOf = async (projectId: number) => {
   if (!incidentsByProject[projectId]) {
-    incidentsByProject[projectId] = projectId === 1 ? await fetchMockIncidents() : []
+    incidentsByProject[projectId] =
+      projectId === 1
+        ? await fetchMockIncidents()
+        : projectId === 2
+          ? [{
+              id: 21, projectId: 2, projectName: findProject(2).name,
+              title: '위키 검색 응답 시간이 기준을 넘고 있습니다.', status: 'OPEN', severity: 'WARNING',
+              occurredAt: at(25), source: 'Alertmanager', assigneeId: null,
+              metric: { currentValue: 2.4, threshold: 1.5, unit: 's' }, firing: true,
+            }]
+          : []
   }
   return incidentsByProject[projectId]
 }
@@ -311,11 +321,28 @@ const routes: [string, string, Handler][] = [
 
   // 장애
   ['get', '/projects/:projectId/incidents', ({ params }) => incidentsOf(params.projectId)],
+  // I7 내가 팀원인 모든 프로젝트의 장애. status는 쉼표, 생략 시 OPEN·ACKNOWLEDGED, 최신순 최대 100건
+  ['get', '/users/me/incidents', async ({ query }) => {
+    const statuses = (query.status ?? 'OPEN,ACKNOWLEDGED').split(',')
+    if (statuses.some((status) => !['OPEN', 'ACKNOWLEDGED', 'RESOLVED'].includes(status))) {
+      throw new MockHttpError(400, '잘못된 요청입니다.', 'INVALID_REQUEST')
+    }
+    const myProjects = projects.filter((project) => roleOf(project.id, currentUserId))
+    const all = (await Promise.all(myProjects.map((project) => incidentsOf(project.id)))).flat()
+    return {
+      openCount: all.filter((incident) => incident.status === 'OPEN').length,
+      incidents: all
+        .filter((incident) => statuses.includes(incident.status))
+        .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+        .slice(0, 100),
+    }
+  }],
   ['patch', '/projects/:projectId/incidents/:incidentId/ack', async ({ params }) => {
     const incident = (await incidentsOf(params.projectId)).find((item) => item.id === params.incidentId)
     if (!incident) throw new MockHttpError(404, '장애를 찾을 수 없습니다.', 'INCIDENT_NOT_FOUND')
-    if (incident.status !== 'OPEN') throw new MockHttpError(409, '이미 확인된 장애입니다.', 'ALREADY_ACKNOWLEDGED')
-    incident.status = 'ACKNOWLEDGED'
+    // 이미 확인된 장애는 200과 현재 장애, 해결된 장애는 409 (Backend 확정)
+    if (incident.status === 'RESOLVED') throw new MockHttpError(409, '이미 해결된 장애입니다.', 'INVALID_INCIDENT_STATUS')
+    if (incident.status === 'OPEN') Object.assign(incident, { status: 'ACKNOWLEDGED', acknowledgedAt: now() })
     return incident
   }],
   ['patch', '/projects/:projectId/incidents/:incidentId/assignee', async ({ params, body }) => {

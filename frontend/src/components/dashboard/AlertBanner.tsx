@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import { focusRing } from '../common/styles'
-import { incidentSummary } from '../../utils/monitoring'
+import { incidentSummary, needsCheck } from '../../utils/monitoring'
 import type { Incident } from '../../types/incident'
 
 // 설계서 4.4: 확인되지 않은(OPEN) 장애 건수와 요약. 없으면 표시하지 않는다.
@@ -12,7 +12,7 @@ function AlertBanner({
   incidents: Incident[]
   projectId: number
 }) {
-  const openIncidents = incidents.filter((incident) => incident.status === 'OPEN')
+  const openIncidents = incidents.filter(needsCheck)
 
   if (openIncidents.length === 0) {
     return null

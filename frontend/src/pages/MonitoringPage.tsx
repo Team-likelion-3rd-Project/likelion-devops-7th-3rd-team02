@@ -12,6 +12,7 @@ import { acknowledgeIncident, updateIncidentAssignee } from '../api/incidentApi'
 import { useMonitoringData } from '../hooks/useMonitoringData'
 import { useProjectMembers } from '../hooks/useProjectMembers'
 import { formatClock, isStale } from '../utils/date'
+import { notifyIncidentsChanged } from '../utils/monitoring'
 import type { Incident } from '../types/incident'
 
 // 설계서 4.8 모니터링
@@ -47,8 +48,13 @@ function MonitoringContent({ projectId }: { projectId: number }) {
         error={incidents.error}
         onRetry={incidents.reload}
         onAcknowledge={async (incident) => {
-          await acknowledgeIncident(projectId, incident.id)
-          incidents.reload()
+          // 다른 팀원이 먼저 처리했을 수 있으니 실패해도 목록을 다시 불러온다 (오류 문구는 IncidentList가 표시).
+          try {
+            await acknowledgeIncident(projectId, incident.id)
+          } finally {
+            incidents.reload()
+            notifyIncidentsChanged()
+          }
         }}
         onAssignRequest={setAssigningIncident}
       />
@@ -90,6 +96,7 @@ function MonitoringContent({ projectId }: { projectId: number }) {
           onAssign={async (assigneeId) => {
             await updateIncidentAssignee(projectId, assigningIncident.id, assigneeId)
             incidents.reload()
+            notifyIncidentsChanged()
           }}
           onClose={() => setAssigningIncident(null)}
         />
