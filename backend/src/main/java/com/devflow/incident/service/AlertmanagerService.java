@@ -5,6 +5,7 @@ import com.devflow.incident.dto.AlertmanagerWebhookRequest;
 import com.devflow.incident.dto.AlertmanagerWebhookRequest.Alert;
 import com.devflow.incident.entity.Incident;
 import com.devflow.incident.repository.IncidentRepository;
+import com.devflow.ops.config.Environments;
 import com.devflow.project.entity.Project;
 import com.devflow.project.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class AlertmanagerService {
 
     private final IncidentRepository incidentRepository;
     private final ProjectRepository projectRepository;
+    private final Environments environments;
     private final Clock clock;
 
     public record Result(int created, int updated, int skipped) {
@@ -64,6 +66,7 @@ public class AlertmanagerService {
                 Incident incident = active.orElseGet(() -> Incident.open(
                         project.get(),
                         fingerprint,
+                        Optional.ofNullable(alert.label("devflow_env")).orElse(environments.currentName()),
                         AlertMapper.severity(alert),
                         validTime(alert.startsAt()).orElse(Times.now(clock))
                 ));

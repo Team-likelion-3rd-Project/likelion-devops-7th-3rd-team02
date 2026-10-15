@@ -45,6 +45,10 @@ services:
       DEPLOY_WEBHOOK_TOKEN: ${DEPLOY_WEBHOOK_TOKEN:-}
       ALERTMANAGER_WEBHOOK_TOKEN: ${ALERTMANAGER_WEBHOOK_TOKEN:-}
       INCIDENT_AUTO_RESOLVE_AFTER: ${INCIDENT_AUTO_RESOLVE_AFTER:-30m}
+      # 운영 상태·파이프라인 (선택, 비우면 "확인 불가"·빈 목록)
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      CACHE_TYPE: ${CACHE_TYPE:-memory}
       TZ: Asia/Seoul
     ports:
       - "8080:8080"

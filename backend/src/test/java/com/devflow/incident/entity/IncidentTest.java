@@ -14,7 +14,7 @@ class IncidentTest {
     private final LocalDateTime t0 = LocalDateTime.of(2026, 10, 15, 12, 48);
 
     private Incident newIncident() {
-        Incident incident = Incident.open(null, "fp", IncidentSeverity.WARNING, t0);
+        Incident incident = Incident.open(null, "fp", "dev", IncidentSeverity.WARNING, t0);
         incident.describe("제목", IncidentSeverity.WARNING, null, null, null, null, null);
         return incident;
     }

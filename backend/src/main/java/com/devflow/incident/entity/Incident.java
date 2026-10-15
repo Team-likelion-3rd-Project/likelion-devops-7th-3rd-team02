@@ -54,6 +54,10 @@ public class Incident extends BaseTimeEntity {
     @Column(nullable = false, length = 255)
     private String fingerprint;
 
+    /** 장애가 난 환경 (dev, production). 환경 요약(E1)에서 사용 */
+    @Column(length = 30)
+    private String environment;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_id")
     private User assignee;
@@ -91,12 +95,14 @@ public class Incident extends BaseTimeEntity {
     public static Incident open(
             Project project,
             String fingerprint,
+            String environment,
             IncidentSeverity severity,
             LocalDateTime occurredAt
     ) {
         Incident incident = new Incident();
         incident.project = project;
         incident.fingerprint = fingerprint;
+        incident.environment = environment;
         incident.severity = severity;
         incident.source = SOURCE_ALERTMANAGER;
         incident.status = IncidentStatus.OPEN;

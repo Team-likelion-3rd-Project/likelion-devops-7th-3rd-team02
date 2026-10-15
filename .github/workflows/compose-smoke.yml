@@ -13,6 +13,7 @@ on:
       - "frontend/**"
       - "docker/**"
       - "docker-compose.yml"
+      - ".github/smoke/**"
       - ".github/workflows/compose-smoke.yml"
   push:
     branches: [develop]
@@ -23,6 +24,9 @@ jobs:
     name: Compose Up & API Flow
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # 실제 compose + CI 전용 덮어쓰기(WireMock으로 Prometheus·GitHub 대신)
+      COMPOSE_FILE: docker-compose.yml:.github/smoke/docker-compose.smoke.yml
     steps:
       - uses: actions/checkout@v4
 
@@ -69,11 +73,11 @@ jobs:
             -H 'Content-Type: application/json' -d '{not json')
           test "$status" = "400"
 
-      - name: Flyway migrations applied (V1 기준선, V2 인덱스, V3 배포, V4 장애)
+      - name: Flyway migrations applied (V1 기준선, V2 인덱스, V3 배포, V4 장애, V5 환경·저장소 연결)
         run: |
           docker compose exec -T postgres psql -U devflow -d devflow -tAc \
             "select version from flyway_schema_history where success order by installed_rank" | tee versions.txt
-          for v in 1 2 3 4; do grep -qx "$v" versions.txt; done
+          for v in 1 2 3 4 5; do grep -qx "$v" versions.txt; done
 
       - name: Signup → Login → Me → Create project (role)
         run: |
@@ -230,6 +234,66 @@ jobs:
             sleep 5
           done
           echo "incident $a was not auto-resolved"; exit 1
+
+      - name: Ops status via Prometheus (K1, K2, E1~E3, O1, D1 health)
+        run: |
+          set -e
+          api=http://localhost:3000/api/projects/$PROJECT_ID
+          auth="Authorization: Bearer $OWNER_TOKEN"
+          check() { # $1=경로 $2=jq 조건
+            curl -fsS "$api$1" -H "$auth" > out.json || { cat out.json; exit 1; }
+            jq -e "$2" out.json > /dev/null || { echo "FAILED: $1"; cat out.json; exit 1; }
+          }
+          check /k8s/deployments '.data.deployments | map(select(.name == "backend"))[0] | .desiredReplicas == 2 and .readyReplicas == 2 and .updatedReplicas == 2'
+          check /k8s/pods '.data.pods as $p | ($p|length) == 2
+            and ($p[] | select(.name == "backend-7d9f-x2k8p") | .status == "Running" and .restartCount == 3 and .image == "backend:7f3c2a1" and .readyContainers == 1 and .totalContainers == 1)
+            and ($p[] | select(.name == "backend-7d9f-crash1") | .status == "CrashLoopBackOff" and .image == "backend:7f3c2a1")'
+          check /k8s/nodes '.data.nodes as $n | ($n|length) == 2
+            and ($n[0].name == "k8s-master" and $n[0].roles == ["control-plane"] and $n[0].ready == true and $n[0].cpuUsage == 38.5)
+            and ($n[1].roles == ["worker"] and $n[1].memoryUsage == 72.4 and $n[1].kubeletVersion == "v1.31.2")
+            and (.data.collectedAt | test("\\+09:00$"))'
+          check "/k8s/hpa?env=dev" '.data.hpas[0] | .name == "backend-hpa" and .target == "backend" and .currentReplicas == 3 and .desiredReplicas == 4
+            and .minReplicas == 2 and .maxReplicas == 6 and .currentCpuUtilization == 72 and .targetCpuUtilization == 60'
+          check "/monitoring/summary?range=6h" '.data | .httpRequestCount == 18420 and .errorRate == 0.6 and .avgResponseTimeMs == 1500
+            and .cpuUsage == 55.0 and .memoryUsage == 74.0 and .replicas == {"ready":2,"desired":2} and (.series|length) == 12'
+          # E1: dev는 수집 성공(열린 CRITICAL 장애 → DOWN), production은 배포 기록 없음
+          check /environments '(.data|length) == 2
+            and (.data[0] | .name == "dev" and .reason == null and .health == "DOWN" and .replicas.ready == 2
+                 and .currentImageTag == "7f3c2a1" and .openIncidents == 1 and .collectedAt != null)
+            and (.data[1] | .name == "production" and .health == "UNKNOWN" and .reason == "NOT_DEPLOYED" and .replicas == null)'
+          # D1: 최근 배포(frontend)의 health는 frontend Deployment 레플리카로 판정
+          check "/deployments?size=3" '.data.deployments[0].health == "HEALTHY" and .data.deployments[1].health == null'
+          # 잘못된 range 400, 없는 env 404, Prometheus 주소 없는 env 502
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$api/monitoring/summary?range=2h" -H "$auth")" = "400"
+          test "$(curl -s -o e.json -w '%{http_code}' "$api/k8s/pods?env=prod" -H "$auth")" = "404" && jq -e '.code == "ENVIRONMENT_NOT_FOUND"' e.json
+          test "$(curl -s -o e.json -w '%{http_code}' "$api/k8s/nodes?env=production" -H "$auth")" = "502" && jq -e '.code == "EXTERNAL_API_ERROR"' e.json
+
+      - name: GitHub repository (G1, G2) → pipelines (C1)
+        run: |
+          set -e
+          api=http://localhost:3000/api/projects/$PROJECT_ID
+          auth="Authorization: Bearer $OWNER_TOKEN"
+          json='Content-Type: application/json'
+          # 연결 전: 저장소 null, 파이프라인 빈 목록, GitLab 항상 null
+          curl -fsS $api/github/repository -H "$auth" | jq -e '.data == null'
+          curl -fsS $api/cicd/pipelines -H "$auth" | jq -e '.data.totalCount == 0 and .data.pipelines == []'
+          curl -fsS $api/integrations/gitlab -H "$auth" | jq -e '.success and .data == null'
+          # 연결은 OWNER만, 주소 형식·접근 확인
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $api/integrations/github -H "Authorization: Bearer $MEMBER_TOKEN" -H "$json" -d '{"repositoryUrl":"https://github.com/team02/devflow"}')" = "403"
+          test "$(curl -s -o e.json -w '%{http_code}' -X POST $api/integrations/github -H "$auth" -H "$json" -d '{"repositoryUrl":"https://gitlab.com/team02/devflow"}')" = "400" && jq -e '.code == "INVALID_REPOSITORY_URL"' e.json
+          test "$(curl -s -o e.json -w '%{http_code}' -X POST $api/integrations/github -H "$auth" -H "$json" -d '{"repositoryUrl":"https://github.com/team02/missing"}')" = "400" && jq -e '.code == "REPOSITORY_NOT_ACCESSIBLE"' e.json
+          curl -fsS -X POST $api/integrations/github -H "$auth" -H "$json" -d '{"repositoryUrl":"https://github.com/team02/devflow.git/"}' \
+            | jq -e '.data == {"fullName":"team02/devflow","url":"https://github.com/team02/devflow"}'
+          curl -fsS $api/github/repository -H "Authorization: Bearer $MEMBER_TOKEN" | jq -e '.data.fullName == "team02/devflow"'
+
+          curl -fsS "$api/cicd/pipelines?size=10" -H "$auth" > p.json || { cat p.json; exit 1; }
+          jq -e '.data.totalCount == 2 and (.data.pipelines|length) == 2
+            and (.data.pipelines[0] | .number == 318 and .status == "RUNNING" and .finishedAt == null and .commitMessage == "작업 검색과 필터 추가"
+                 and .startedAt == "2026-10-15T12:54:00+09:00" and ([.stages[].name] == ["BUILD","TEST","IMAGE","VERIFY","DEPLOY"])
+                 and ([.stages[].status] == ["SUCCESS","SUCCESS","SUCCESS","PENDING","RUNNING"]))
+            and (.data.pipelines[1] | .status == "FAILED" and .finishedAt != null and (.stages[] | select(.name == "TEST") | .status == "FAILED"))' p.json \
+            || { cat p.json; exit 1; }
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$api/cicd/pipelines?size=31" -H "$auth")" = "400"
 
       - name: Graceful shutdown
         run: |

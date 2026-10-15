@@ -105,6 +105,36 @@ public enum ErrorCode {
             "프로젝트에 참여하지 않은 사용자는 장애 담당자로 지정할 수 없습니다."
     ),
 
+    ENVIRONMENT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "ENVIRONMENT_NOT_FOUND",
+            "설정되지 않은 환경입니다."
+    ),
+
+    INVALID_REPOSITORY_URL(
+            HttpStatus.BAD_REQUEST,
+            "INVALID_REPOSITORY_URL",
+            "저장소 주소는 https://github.com/{owner}/{repo} 형식이어야 합니다."
+    ),
+
+    REPOSITORY_NOT_ACCESSIBLE(
+            HttpStatus.BAD_REQUEST,
+            "REPOSITORY_NOT_ACCESSIBLE",
+            "저장소가 없거나 접근할 수 없습니다."
+    ),
+
+    EXTERNAL_API_ERROR(
+            HttpStatus.BAD_GATEWAY,
+            "EXTERNAL_API_ERROR",
+            "외부 시스템에서 정보를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요."
+    ),
+
+    EXTERNAL_API_TIMEOUT(
+            HttpStatus.GATEWAY_TIMEOUT,
+            "EXTERNAL_API_TIMEOUT",
+            "외부 시스템 응답이 늦어 정보를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요."
+    ),
+
     INTERNAL_SERVER_ERROR(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "INTERNAL_SERVER_ERROR",
