@@ -188,11 +188,12 @@ jobs:
 
           # A: 새 장애 OPEN, description이 없으면 수치로 요약 생성, 발생 시각은 +09:00
           send "$(alert firing a1 warning '')" | jq -e '.data.created == 1'
-          curl -fsS $api -H "$oauth" | tee inc.json | jq -e '
-            length == 1 and .[0].status == "OPEN" and .[0].severity == "WARNING" and .[0].firing == true
-            and .[0].summary == "1.8s (기준 1.0s)" and .[0].metric.threshold == 1.0
-            and .[0].projectName == "Smoke Project" and .[0].occurredAt == "2026-10-15T12:48:00+09:00"'
-          a=$(jq -r '.[0].id' inc.json)
+          curl -fsS $api -H "$oauth" | tee inc.json | jq -e '.data as $d |
+            ($d|length) == 1 and $d[0].status == "OPEN" and $d[0].severity == "WARNING" and $d[0].firing == true
+            and $d[0].summary == "1.8s (기준 1.0s)" and $d[0].metric.threshold == 1.0
+            and $d[0].projectName == "Smoke Project" and $d[0].occurredAt == "2026-10-15T12:48:00+09:00"' \
+            || { cat inc.json; exit 1; }
+          a=$(jq -r '.data[0].id' inc.json)
           # 같은 알림 반복 → 새 장애 없이 갱신
           send "$(alert firing a1 warning '')" | jq -e '.data.updated == 1 and .data.created == 0'
           curl -fsS $me -H "Authorization: Bearer $MEMBER_TOKEN" | jq -e '.data.openCount == 1 and (.data.incidents|length) == 1'
@@ -214,7 +215,7 @@ jobs:
           test "$status" = "409" && jq -e '.code == "INVALID_INCIDENT_STATUS"' conflict.json
           send "$(alert firing b1 critical 'p95 1.8초 (기준 1.0초)')" | jq -e '.data.created == 1'
           # I1: 해결 전 2건 + 최근 해결 1건
-          curl -fsS $api -H "$oauth" | jq -e 'length == 3 and (map(select(.status == "RESOLVED")) | length) == 1'
+          curl -fsS $api -H "$oauth" | jq -e '(.data|length) == 3 and (.data | map(select(.status == "RESOLVED")) | length) == 1'
           # I7 기본(해결 전) 2건, RESOLVED 지정 1건, 쉼표 여러 값
           curl -fsS $me -H "$oauth" | jq -e '(.data.incidents|length) == 2 and .data.openCount == 1'
           curl -fsS "$me?status=RESOLVED" -H "$oauth" | jq -e '(.data.incidents|length) == 1'
@@ -224,7 +225,7 @@ jobs:
           # A 알림 풀림 → firing=false, 확인된 장애라 자동 해결 (이 Job은 기준 0초, 스케줄러 1분 주기)
           send "$(alert resolved a1 warning '' | jq -c --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.alerts[0].endsAt = $t')" | jq -e '.data.updated == 1'
           for i in $(seq 1 18); do
-            st=$(curl -fsS $api -H "$oauth" | jq -r --argjson a "$a" '.[] | select(.id == $a) | .status')
+            st=$(curl -fsS $api -H "$oauth" | jq -r --argjson a "$a" '.data[] | select(.id == $a) | .status')
             if [ "$st" = "RESOLVED" ]; then echo "auto-resolved after $((i*5))s"; exit 0; fi
             sleep 5
           done
