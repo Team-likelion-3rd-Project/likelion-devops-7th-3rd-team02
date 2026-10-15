@@ -25,6 +25,7 @@ function TaskCard({
       type="button"
       onClick={onSelect}
       aria-pressed={isSelected}
+      data-task-id={task.id}
       className={`flex w-full min-w-0 cursor-pointer flex-col gap-2 rounded-[10px] border bg-panel px-3.5 py-3 text-left shadow-panel ${focusRing} ${
         isSelected ? 'border-accent ring-1 ring-accent' : 'border-line hover:bg-hover'
       }`}

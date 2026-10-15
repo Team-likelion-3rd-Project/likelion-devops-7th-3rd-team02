@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { X } from 'lucide-react'
 
 import Panel from '../common/Panel'
 import StatusBadge from '../common/StatusBadge'
@@ -18,21 +19,34 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
 }
 
 // 설계서 4.5 오른쪽 상세 패널: 제목, 상태, 설명, 담당자, GitHub 이슈, PR 링크, 수정 버튼
-// 삭제 버튼과 상태 변경 이력은 표시하지 않는다.
+// 삭제 버튼과 상태 변경 이력은 표시하지 않는다. 닫기(X), Esc, 같은 카드 다시 선택으로 닫는다.
 function TaskDetailPanel({
   task,
   onEdit,
+  onClose,
 }: {
   task: Task
   onEdit: () => void
+  onClose: () => void
 }) {
   return (
     <Panel
       title={<span className="break-keep [overflow-wrap:anywhere]">{task.title}</span>}
       action={
-        <StatusBadge tone={TASK_STATUS[task.status].tone}>
-          {TASK_STATUS[task.status].label}
-        </StatusBadge>
+        <span className="flex flex-none items-center gap-1.5">
+          <StatusBadge tone={TASK_STATUS[task.status].tone}>
+            {TASK_STATUS[task.status].label}
+          </StatusBadge>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="상세 닫기"
+            title="닫기 (Esc)"
+            className={`-mr-1.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted hover:bg-hover hover:text-ink ${focusRing}`}
+          >
+            <X aria-hidden="true" size={16} />
+          </button>
+        </span>
       }
     >
       <div className="flex flex-col gap-[18px] px-[18px] py-4">
