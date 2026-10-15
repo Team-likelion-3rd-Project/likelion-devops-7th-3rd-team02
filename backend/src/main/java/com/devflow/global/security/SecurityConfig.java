@@ -68,6 +68,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
+                                // CI·Alertmanager가 호출. JWT 대신 Webhook 공유 토큰을 컨트롤러에서 확인
+                                "/api/webhooks/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",

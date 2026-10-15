@@ -31,6 +31,10 @@ jobs:
           {
             echo "DB_PASSWORD=$(openssl rand -hex 16)"
             echo "JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')"
+            echo "DEPLOY_WEBHOOK_TOKEN=$(openssl rand -hex 32)"
+            echo "ALERTMANAGER_WEBHOOK_TOKEN=$(openssl rand -hex 32)"
+            # 자동 해결을 기다리지 않도록 0초 (스케줄러 1분 주기)
+            echo "INCIDENT_AUTO_RESOLVE_AFTER=0s"
           } > .env
 
       - name: Build & start
@@ -65,11 +69,11 @@ jobs:
             -H 'Content-Type: application/json' -d '{not json')
           test "$status" = "400"
 
-      - name: Flyway migrations applied (V1 baseline schema, V2 indexes)
+      - name: Flyway migrations applied (V1 기준선, V2 인덱스, V3 배포, V4 장애)
         run: |
           docker compose exec -T postgres psql -U devflow -d devflow -tAc \
             "select version from flyway_schema_history where success order by installed_rank" | tee versions.txt
-          grep -qx 1 versions.txt && grep -qx 2 versions.txt
+          for v in 1 2 3 4; do grep -qx "$v" versions.txt; done
 
       - name: Signup → Login → Me → Create project (role)
         run: |
@@ -98,7 +102,8 @@ jobs:
           status=$(curl -s -o nf.json -w '%{http_code}' $api/projects/999999/tasks -H "Authorization: Bearer $owner")
           test "$status" = "404" && jq -e '.code == "PROJECT_NOT_FOUND"' nf.json
 
-          { echo "OWNER_TOKEN=$owner"; echo "PROJECT_ID=$pid"; } >> "$GITHUB_ENV"
+          member_id=$(curl -fsS $api/users/me -H "Authorization: Bearer $member" | jq -r '.data.userId')
+          { echo "OWNER_TOKEN=$owner"; echo "MEMBER_TOKEN=$member"; echo "MEMBER_ID=$member_id"; echo "PROJECT_ID=$pid"; } >> "$GITHUB_ENV"
 
       - name: Task search · filter · page · statusCounts · PATCH
         run: |
@@ -130,6 +135,101 @@ jobs:
           # 팀원이 아닌 담당자는 생성에서도 400 INVALID_TASK_ASSIGNEE
           status=$(curl -s -o bad.json -w '%{http_code}' -X POST $api -H "$auth" -H 'Content-Type: application/json' -d '{"title":"x","assigneeId":999999}')
           test "$status" = "400" && jq -e '.code == "INVALID_TASK_ASSIGNEE"' bad.json
+
+      - name: Deployment webhook (D3) → history (D1)
+        run: |
+          set -e
+          source .env
+          hook=http://localhost:3000/api/webhooks/deployments
+          body() { jq -nc --argjson pid "$PROJECT_ID" --arg svc "$1" --argjson pl "$2" --arg st "$3" \
+            '{projectId:$pid, environment:"dev", service:$svc, commitSha:"7f3c2a1d9e", commitMessage:"로그인 만료 처리 추가\n\n본문",
+              imageTag:"7f3c2a1", imageDigest:"sha256:abc", revision:3, status:$st, pipelineId:$pl}'; }
+          # 토큰 없음·틀림 → 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $hook -H 'Content-Type: application/json' -d "$(body backend 101 IN_PROGRESS)")" = "401"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $hook -H 'Authorization: Bearer wrong' -H 'Content-Type: application/json' -d "$(body backend 101 IN_PROGRESS)")" = "401"
+          auth="Authorization: Bearer $DEPLOY_WEBHOOK_TOKEN"
+          curl -fsS -X POST $hook -H "$auth" -H 'Content-Type: application/json' -d "$(body backend 101 IN_PROGRESS)" | jq -e '.data.status == "IN_PROGRESS"'
+          # 같은 pipelineId+service → 한 행 갱신
+          curl -fsS -X POST $hook -H "$auth" -H 'Content-Type: application/json' -d "$(body backend 101 SUCCESS)" | jq -e '.data.status == "SUCCESS"'
+          curl -fsS -X POST $hook -H "$auth" -H 'Content-Type: application/json' -d "$(body frontend 102 FAILED)" | jq -e '.success'
+
+          api=http://localhost:3000/api/projects/$PROJECT_ID/deployments
+          curl -fsS "$api" -H "Authorization: Bearer $MEMBER_TOKEN" | tee dep.json | jq -e '
+            .data.totalCount == 2
+            and (.data.deployments | map(select(.service == "backend"))[0].status == "SUCCESS")
+            and (.data.deployments[0].commitMessage == "로그인 만료 처리 추가")
+            and (.data.deployments[0].deployedAt | test("\\+09:00$"))
+            and (.data.collectedAt | test("\\+09:00$"))'
+          curl -fsS "$api?size=1" -H "Authorization: Bearer $OWNER_TOKEN" | jq -e '.data.totalCount == 2 and (.data.deployments|length) == 1'
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$api?size=0" -H "Authorization: Bearer $OWNER_TOKEN")" = "400"
+
+      - name: Alertmanager webhook (I5) → incidents (I1~I3, I6, I7, 자동 해결)
+        run: |
+          set -e
+          source .env
+          hook=http://localhost:3000/api/webhooks/alertmanager
+          hauth="Authorization: Bearer $ALERTMANAGER_WEBHOOK_TOKEN"
+          alert() { # $1=status $2=fingerprint $3=severity $4=description(빈 값 가능)
+            jq -nc --arg pid "$PROJECT_ID" --arg st "$1" --arg fp "$2" --arg sev "$3" --arg desc "$4" '
+              {version:"4", status:$st, alerts:[{status:$st, fingerprint:$fp,
+                labels:{alertname:"HighLatency", severity:$sev, devflow_project_id:$pid},
+                annotations:({summary:"api 응답 시간이 기준(1.0초)을 넘고 있습니다.", current_value:"1.8", threshold:"1.0", unit:"s"}
+                  + (if $desc == "" then {} else {description:$desc} end)),
+                startsAt:"2026-10-15T03:48:00.000Z", endsAt:"0001-01-01T00:00:00Z"}]}'; }
+          send() { curl -fsS -X POST $hook -H "$hauth" -H 'Content-Type: application/json' -d "$1"; }
+          api=http://localhost:3000/api/projects/$PROJECT_ID/incidents
+          me=http://localhost:3000/api/users/me/incidents
+          oauth="Authorization: Bearer $OWNER_TOKEN"
+
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $hook -H 'Content-Type: application/json' -d "$(alert firing a1 warning '')")" = "401"
+          # 프로젝트 라벨이 없는 알림은 건너뜀
+          curl -fsS -X POST $hook -H "$hauth" -H 'Content-Type: application/json' \
+            -d '{"alerts":[{"status":"firing","fingerprint":"x","labels":{"alertname":"Other"}}]}' | jq -e '.data.skipped == 1'
+
+          # A: 새 장애 OPEN, description이 없으면 수치로 요약 생성, 발생 시각은 +09:00
+          send "$(alert firing a1 warning '')" | jq -e '.data.created == 1'
+          curl -fsS $api -H "$oauth" | tee inc.json | jq -e '.data as $d |
+            ($d|length) == 1 and $d[0].status == "OPEN" and $d[0].severity == "WARNING" and $d[0].firing == true
+            and $d[0].summary == "1.8s (기준 1.0s)" and $d[0].metric.threshold == 1.0
+            and $d[0].projectName == "Smoke Project" and $d[0].occurredAt == "2026-10-15T12:48:00+09:00"' \
+            || { cat inc.json; exit 1; }
+          a=$(jq -r '.data[0].id' inc.json)
+          # 같은 알림 반복 → 새 장애 없이 갱신
+          send "$(alert firing a1 warning '')" | jq -e '.data.updated == 1 and .data.created == 0'
+          curl -fsS $me -H "Authorization: Bearer $MEMBER_TOKEN" | jq -e '.data.openCount == 1 and (.data.incidents|length) == 1'
+
+          # I2 확인 → 다시 확인해도 200, I3 담당자 (팀원 OK / 팀원 아님 400)
+          curl -fsS -X PATCH $api/$a/ack -H "$oauth" | jq -e '.data.status == "ACKNOWLEDGED" and .data.acknowledgedAt != null'
+          curl -fsS -X PATCH $api/$a/ack -H "Authorization: Bearer $MEMBER_TOKEN" | jq -e '.data.status == "ACKNOWLEDGED"'
+          curl -fsS -X PATCH $api/$a/assignee -H "$oauth" -H 'Content-Type: application/json' -d "{\"assigneeId\":$MEMBER_ID}" \
+            | jq -e --argjson m "$MEMBER_ID" '.data.assigneeId == $m'
+          status=$(curl -s -o bad.json -w '%{http_code}' -X PATCH $api/$a/assignee -H "$oauth" -H 'Content-Type: application/json' -d '{"assigneeId":999999}')
+          test "$status" = "400" && jq -e '.code == "INVALID_INCIDENT_ASSIGNEE"' bad.json
+
+          # B: CRITICAL, description 그대로 요약. 울리는 중에 직접 해결(I6) → 다시 확인하면 409 → 다시 울리면 새 장애
+          send "$(alert firing b1 critical 'p95 1.8초 (기준 1.0초)')" | jq -e '.data.created == 1'
+          b=$(curl -fsS "$me?status=OPEN" -H "$oauth" | tee open.json | jq -r '.data.incidents[0].id')
+          jq -e '.data.openCount == 1 and .data.incidents[0].summary == "p95 1.8초 (기준 1.0초)" and .data.incidents[0].severity == "CRITICAL"' open.json
+          curl -fsS -X PATCH $api/$b/resolve -H "$oauth" | jq -e '.data.status == "RESOLVED" and .data.resolvedAt != null'
+          status=$(curl -s -o conflict.json -w '%{http_code}' -X PATCH $api/$b/ack -H "$oauth")
+          test "$status" = "409" && jq -e '.code == "INVALID_INCIDENT_STATUS"' conflict.json
+          send "$(alert firing b1 critical 'p95 1.8초 (기준 1.0초)')" | jq -e '.data.created == 1'
+          # I1: 해결 전 2건 + 최근 해결 1건
+          curl -fsS $api -H "$oauth" | jq -e '(.data|length) == 3 and (.data | map(select(.status == "RESOLVED")) | length) == 1'
+          # I7 기본(해결 전) 2건, RESOLVED 지정 1건, 쉼표 여러 값
+          curl -fsS $me -H "$oauth" | jq -e '(.data.incidents|length) == 2 and .data.openCount == 1'
+          curl -fsS "$me?status=RESOLVED" -H "$oauth" | jq -e '(.data.incidents|length) == 1'
+          curl -fsS "$me?status=OPEN,ACKNOWLEDGED,RESOLVED" -H "$oauth" | jq -e '(.data.incidents|length) == 3'
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$me?status=WRONG" -H "$oauth")" = "400"
+
+          # A 알림 풀림 → firing=false, 확인된 장애라 자동 해결 (이 Job은 기준 0초, 스케줄러 1분 주기)
+          send "$(alert resolved a1 warning '' | jq -c --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.alerts[0].endsAt = $t')" | jq -e '.data.updated == 1'
+          for i in $(seq 1 18); do
+            st=$(curl -fsS $api -H "$oauth" | jq -r --argjson a "$a" '.data[] | select(.id == $a) | .status')
+            if [ "$st" = "RESOLVED" ]; then echo "auto-resolved after $((i*5))s"; exit 0; fi
+            sleep 5
+          done
+          echo "incident $a was not auto-resolved"; exit 1
 
       - name: Graceful shutdown
         run: |

@@ -81,6 +81,30 @@ public enum ErrorCode {
             "INVALID_TASK_ASSIGNEE",
             "프로젝트에 참여하지 않은 사용자는 담당자로 지정할 수 없습니다."
     ),
+    INVALID_WEBHOOK_TOKEN(
+            HttpStatus.UNAUTHORIZED,
+            "INVALID_WEBHOOK_TOKEN",
+            "Webhook 인증 토큰이 없거나 올바르지 않습니다."
+    ),
+
+    INCIDENT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "INCIDENT_NOT_FOUND",
+            "장애를 찾을 수 없습니다."
+    ),
+
+    INVALID_INCIDENT_STATUS(
+            HttpStatus.CONFLICT,
+            "INVALID_INCIDENT_STATUS",
+            "이미 해결된 장애는 변경할 수 없습니다."
+    ),
+
+    INVALID_INCIDENT_ASSIGNEE(
+            HttpStatus.BAD_REQUEST,
+            "INVALID_INCIDENT_ASSIGNEE",
+            "프로젝트에 참여하지 않은 사용자는 장애 담당자로 지정할 수 없습니다."
+    ),
+
     INTERNAL_SERVER_ERROR(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "INTERNAL_SERVER_ERROR",

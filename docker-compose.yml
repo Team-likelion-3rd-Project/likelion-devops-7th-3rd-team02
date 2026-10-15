@@ -33,7 +33,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      # local 프로필: 스키마 자동 생성(ddl-auto: update). Flyway 도입(M3) 전까지 사용
+      # local 프로필: 스키마는 Flyway(V1~)가 만들고 Hibernate는 검증만 한다
       SPRING_PROFILES_ACTIVE: local
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-devflow}
       DB_USERNAME: ${DB_USERNAME:-devflow}
@@ -41,6 +41,10 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET을 .env에 설정하세요 (32자 이상)}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
       CORS_ALLOWED_ORIGINS: http://localhost:3000
+      # Webhook 공유 토큰 (비어 있으면 해당 Webhook 비활성). 배포 기록 D3, Alertmanager I5
+      DEPLOY_WEBHOOK_TOKEN: ${DEPLOY_WEBHOOK_TOKEN:-}
+      ALERTMANAGER_WEBHOOK_TOKEN: ${ALERTMANAGER_WEBHOOK_TOKEN:-}
+      INCIDENT_AUTO_RESOLVE_AFTER: ${INCIDENT_AUTO_RESOLVE_AFTER:-30m}
       TZ: Asia/Seoul
     ports:
       - "8080:8080"
