@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/github/repos/team02/missing"
+  },
+  "response": {
+    "status": 404,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "message": "Not Found"
+    }
+  }
+}

@@ -8,6 +8,10 @@ import com.devflow.deployment.repository.DeploymentRepository;
 import com.devflow.global.exception.BusinessException;
 import com.devflow.global.exception.ErrorCode;
 import com.devflow.global.time.Times;
+import com.devflow.ops.config.Environments;
+import com.devflow.ops.config.OpsProperties;
+import com.devflow.ops.service.HealthRule;
+import com.devflow.ops.service.KubeStatusService;
 import com.devflow.project.entity.Project;
 import com.devflow.project.service.ProjectAccessChecker;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -32,6 +38,8 @@ public class DeploymentService {
     private final DeploymentRepository deploymentRepository;
     private final ProjectAccessChecker projectAccessChecker;
     private final Clock clock;
+    private final Environments environments;
+    private final KubeStatusService kubeStatus;
 
     /** D3: 배포 기록 저장. pipelineId가 같으면 시작 기록을 완료 기록으로 갱신 */
     @Transactional
@@ -78,11 +86,29 @@ public class DeploymentService {
                 ? deploymentRepository.findByProjectId(projectId, pageable)
                 : deploymentRepository.findByProjectIdAndEnvironment(projectId, environment.trim(), pageable);
 
+        List<DeploymentResponse> deployments = new ArrayList<>(
+                result.getContent().stream().map(DeploymentResponse::from).toList());
+        if (pageable.getPageNumber() == 0 && !deployments.isEmpty()) {
+            deployments.set(0, deployments.get(0).withHealth(latestHealth(deployments.get(0))));
+        }
+
         return new DeploymentListResponse(
-                result.getContent().stream().map(DeploymentResponse::from).toList(),
+                deployments,
                 result.getTotalElements(),
                 Times.nowOffset(clock)
         );
+    }
+
+    /** 최근 배포의 실행 상태: 그 환경에서 같은 이름 Deployment의 레플리카로 판정. 확인 불가·지표 없음은 null */
+    private String latestHealth(DeploymentResponse latest) {
+        try {
+            OpsProperties.Environment env = environments.resolve(latest.environment());
+            return kubeStatus.replicas(env, latest.service())
+                    .map(replicas -> HealthRule.of(replicas, List.of()))
+                    .orElse(null);
+        } catch (BusinessException e) {
+            return null;
+        }
     }
 
     static Pageable toPageable(Integer page, Integer size) {

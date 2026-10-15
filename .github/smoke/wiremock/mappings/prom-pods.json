@@ -1,0 +1,171 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/api/v1/query",
+    "bodyPatterns": [
+      {
+        "contains": "kube_pod_status_phase"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "status": "success",
+      "data": {
+        "resultType": "vector",
+        "result": [
+          {
+            "metric": {
+              "__name__": "kube_pod_status_phase",
+              "pod": "backend-7d9f-x2k8p",
+              "namespace": "devflow",
+              "phase": "Running"
+            },
+            "value": [
+              1760500000,
+              "1"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_status_phase",
+              "pod": "backend-7d9f-x2k8p",
+              "namespace": "devflow",
+              "phase": "Pending"
+            },
+            "value": [
+              1760500000,
+              "0"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_container_info",
+              "pod": "backend-7d9f-x2k8p",
+              "namespace": "devflow",
+              "container": "backend",
+              "image": "ghcr.io/team02/backend:7f3c2a1"
+            },
+            "value": [
+              1760500000,
+              "1"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_container_status_ready",
+              "pod": "backend-7d9f-x2k8p",
+              "namespace": "devflow",
+              "container": "backend"
+            },
+            "value": [
+              1760500000,
+              "1"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_container_status_restarts_total",
+              "pod": "backend-7d9f-x2k8p",
+              "namespace": "devflow",
+              "container": "backend"
+            },
+            "value": [
+              1760500000,
+              "3"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_created",
+              "pod": "backend-7d9f-x2k8p",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "1760493600"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_status_phase",
+              "pod": "backend-7d9f-crash1",
+              "namespace": "devflow",
+              "phase": "Running"
+            },
+            "value": [
+              1760500000,
+              "1"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_container_info",
+              "pod": "backend-7d9f-crash1",
+              "namespace": "devflow",
+              "container": "backend",
+              "image": "ghcr.io/team02/backend:7f3c2a1@sha256:abc"
+            },
+            "value": [
+              1760500000,
+              "1"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_container_status_ready",
+              "pod": "backend-7d9f-crash1",
+              "namespace": "devflow",
+              "container": "backend"
+            },
+            "value": [
+              1760500000,
+              "0"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_container_status_restarts_total",
+              "pod": "backend-7d9f-crash1",
+              "namespace": "devflow",
+              "container": "backend"
+            },
+            "value": [
+              1760500000,
+              "7"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_container_status_waiting_reason",
+              "pod": "backend-7d9f-crash1",
+              "namespace": "devflow",
+              "container": "backend",
+              "reason": "CrashLoopBackOff"
+            },
+            "value": [
+              1760500000,
+              "1"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_pod_created",
+              "pod": "backend-7d9f-crash1",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "1760493600"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

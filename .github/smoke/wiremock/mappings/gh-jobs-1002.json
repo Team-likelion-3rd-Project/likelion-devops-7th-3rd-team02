@@ -1,0 +1,38 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/github/repos/team02/devflow/actions/runs/1002/jobs"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "total_count": 3,
+      "jobs": [
+        {
+          "name": "Backend Build & Test",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-15T03:54:05Z",
+          "completed_at": "2026-10-15T03:55:17Z"
+        },
+        {
+          "name": "Docker Image Push",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-15T03:55:20Z",
+          "completed_at": "2026-10-15T03:55:50Z"
+        },
+        {
+          "name": "Deploy (GitOps)",
+          "status": "in_progress",
+          "conclusion": null,
+          "started_at": "2026-10-15T03:55:55Z",
+          "completed_at": null
+        }
+      ]
+    }
+  }
+}

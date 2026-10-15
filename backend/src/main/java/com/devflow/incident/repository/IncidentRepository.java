@@ -1,6 +1,7 @@
 package com.devflow.incident.repository;
 
 import com.devflow.incident.entity.Incident;
+import com.devflow.incident.type.IncidentSeverity;
 import com.devflow.incident.type.IncidentStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -61,6 +62,14 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
               and i.status = com.devflow.incident.type.IncidentStatus.OPEN
             """)
     long countOpenForUser(@Param("userId") Long userId);
+
+    /** E1: 환경별 해결 전 장애의 심각도 목록 (건수·health 판정용) */
+    @Query("""
+            select i.severity from Incident i
+            where i.project.id = :projectId and i.environment = :environment
+              and i.status <> com.devflow.incident.type.IncidentStatus.RESOLVED
+            """)
+    List<IncidentSeverity> findOpenSeverities(@Param("projectId") Long projectId, @Param("environment") String environment);
 
     /**
      * 자동 해결: 확인됨(ACKNOWLEDGED) + 알림이 풀린 지 기준 시간 이상 + 확인한 지도 기준 시간 이상.

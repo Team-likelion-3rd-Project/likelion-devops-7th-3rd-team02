@@ -1,0 +1,17 @@
+# CI 스모크 테스트 전용 덮어쓰기 (compose-smoke.yml이 COMPOSE_FILE로 함께 사용)
+# 실제 Prometheus·GitHub 대신 WireMock이 준비된 응답을 돌려줘
+# 운영 상태(K1·K2·O1·E1~E3)·파이프라인(C1)·저장소 연결(G1) 변환 로직을 검증한다.
+services:
+  mock:
+    image: wiremock/wiremock:3.9.1
+    container_name: devflow-mock
+    volumes:
+      - ./.github/smoke/wiremock:/home/wiremock
+
+  backend:
+    depends_on:
+      mock:
+        condition: service_started
+    environment:
+      PROMETHEUS_URL_DEV: http://mock:8080
+      GITHUB_API_URL: http://mock:8080/github

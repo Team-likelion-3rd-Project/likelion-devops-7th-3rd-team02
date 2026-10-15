@@ -1,0 +1,114 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/api/v1/query",
+    "bodyPatterns": [
+      {
+        "contains": "kube_deployment_spec_replicas"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "status": "success",
+      "data": {
+        "resultType": "vector",
+        "result": [
+          {
+            "metric": {
+              "__name__": "kube_deployment_spec_replicas",
+              "deployment": "backend",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "2"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_deployment_status_replicas_available",
+              "deployment": "backend",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "2"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_deployment_status_replicas_ready",
+              "deployment": "backend",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "2"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_deployment_status_replicas_updated",
+              "deployment": "backend",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "2"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_deployment_spec_replicas",
+              "deployment": "frontend",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "2"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_deployment_status_replicas_available",
+              "deployment": "frontend",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "2"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_deployment_status_replicas_ready",
+              "deployment": "frontend",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "2"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_deployment_status_replicas_updated",
+              "deployment": "frontend",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "2"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

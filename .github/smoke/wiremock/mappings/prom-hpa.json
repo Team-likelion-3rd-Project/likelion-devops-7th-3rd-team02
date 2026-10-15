@@ -1,0 +1,109 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/api/v1/query",
+    "bodyPatterns": [
+      {
+        "contains": "kube_horizontalpodautoscaler_info"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "status": "success",
+      "data": {
+        "resultType": "vector",
+        "result": [
+          {
+            "metric": {
+              "__name__": "kube_horizontalpodautoscaler_info",
+              "horizontalpodautoscaler": "backend-hpa",
+              "namespace": "devflow",
+              "scaletargetref_name": "backend",
+              "scaletargetref_kind": "Deployment"
+            },
+            "value": [
+              1760500000,
+              "1"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_horizontalpodautoscaler_status_current_replicas",
+              "horizontalpodautoscaler": "backend-hpa",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "3"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_horizontalpodautoscaler_status_desired_replicas",
+              "horizontalpodautoscaler": "backend-hpa",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "4"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_horizontalpodautoscaler_spec_min_replicas",
+              "horizontalpodautoscaler": "backend-hpa",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "2"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_horizontalpodautoscaler_spec_max_replicas",
+              "horizontalpodautoscaler": "backend-hpa",
+              "namespace": "devflow"
+            },
+            "value": [
+              1760500000,
+              "6"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_horizontalpodautoscaler_spec_target_metric",
+              "horizontalpodautoscaler": "backend-hpa",
+              "namespace": "devflow",
+              "metric_name": "cpu",
+              "metric_target_type": "utilization"
+            },
+            "value": [
+              1760500000,
+              "60"
+            ]
+          },
+          {
+            "metric": {
+              "__name__": "kube_horizontalpodautoscaler_status_target_metric",
+              "horizontalpodautoscaler": "backend-hpa",
+              "namespace": "devflow",
+              "metric_name": "cpu",
+              "metric_target_type": "utilization"
+            },
+            "value": [
+              1760500000,
+              "72"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

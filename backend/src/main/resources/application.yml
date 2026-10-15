@@ -17,6 +17,15 @@ spring:
     baseline-on-migrate: true
     baseline-version: 1
 
+  # Redis는 devflow.cache.type=redis일 때만 사용. 느리거나 끊기면 캐시 없이 조회하도록 짧은 타임아웃
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 500ms
+      connect-timeout: 500ms
+
   jpa:
     open-in-view: false
     properties:
@@ -56,6 +65,9 @@ management:
       show-details: when-authorized
 
   health:
+    # Redis는 캐시 전용이라 내려가도 서비스 상태(health)에 영향을 주지 않는다
+    redis:
+      enabled: false
     livenessstate:
       enabled: true
     readinessstate:
@@ -80,3 +92,30 @@ devflow:
   incident:
     auto-resolve-after: ${INCIDENT_AUTO_RESOLVE_AFTER:30m}
     auto-resolve-interval-ms: 60000
+
+  # 외부 조회 캐시: memory(기본, Pod별) | redis (ON1 온프레미스 Redis, spring.data.redis 설정 사용)
+  cache:
+    type: ${CACHE_TYPE:memory}
+
+  # GitHub: 저장소 연결 확인(G1)·Actions 파이프라인(C1). 토큰은 Secret으로만 (없으면 공개 저장소만)
+  github:
+    api-url: ${GITHUB_API_URL:https://api.github.com}
+    token: ${GITHUB_TOKEN:}
+    workflow: ${GITHUB_WORKFLOW:}
+
+  # 운영 상태(K1·K2·O1·E1~E3)는 각 환경의 Prometheus(kube-state-metrics·node-exporter 포함)로 조회한다.
+  # Prometheus 주소가 비어 있는 환경은 "확인 불가(UNREACHABLE)"로 표시된다.
+  ops:
+    current-environment: ${DEVFLOW_ENV:dev}
+    backend-job: ${PROMETHEUS_BACKEND_JOB:backend}
+    backend-deployment: backend
+    node-label: node
+    environments:
+      - name: dev
+        label: 온프레미스 (kubeadm)
+        prometheus-url: ${PROMETHEUS_URL_DEV:${PROMETHEUS_URL:}}
+        namespace: ${K8S_NAMESPACE:devflow}
+      - name: production
+        label: AWS
+        prometheus-url: ${PROMETHEUS_URL_PRODUCTION:}
+        namespace: ${K8S_NAMESPACE:devflow}

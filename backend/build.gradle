@@ -34,6 +34,9 @@ dependencies {
 
     runtimeOnly 'org.postgresql:postgresql'
 
+    // 외부 조회 결과 캐시 (ON1: Redis 캐시. Redis가 없으면 메모리 캐시로 동작)
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
     // DB 마이그레이션 (버전은 Spring Boot가 관리)
     implementation 'org.flywaydb:flyway-core'
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'

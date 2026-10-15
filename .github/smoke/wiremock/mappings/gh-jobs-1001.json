@@ -1,0 +1,31 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/github/repos/team02/devflow/actions/runs/1001/jobs"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "total_count": 2,
+      "jobs": [
+        {
+          "name": "Backend Build & Test",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-10-15T03:40:05Z",
+          "completed_at": "2026-10-15T03:44:00Z"
+        },
+        {
+          "name": "Secret Scan",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-15T03:40:05Z",
+          "completed_at": "2026-10-15T03:41:00Z"
+        }
+      ]
+    }
+  }
+}
