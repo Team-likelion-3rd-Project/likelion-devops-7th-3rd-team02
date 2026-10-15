@@ -53,6 +53,18 @@ public enum ErrorCode {
             "이미 프로젝트에 등록된 사용자입니다."
     ),
 
+    PROJECT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "PROJECT_NOT_FOUND",
+            "프로젝트를 찾을 수 없습니다."
+    ),
+
+    USER_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "USER_NOT_FOUND",
+            "해당 사용자를 찾을 수 없습니다."
+    ),
+
     PROJECT_MEMBER_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "PROJECT_MEMBER_NOT_FOUND",

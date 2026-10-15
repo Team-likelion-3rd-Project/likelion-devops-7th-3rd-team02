@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(BusinessException.class)
         public ResponseEntity<ErrorResponse> handleBusinessException(
                         BusinessException exception) {
-                return toResponse(exception.getErrorCode(), exception.getErrorCode().getMessage());
+                return toResponse(exception.getErrorCode(), exception.getMessage());
         }
 
         // @Valid 검증 실패: 첫 번째 필드 오류 메시지를 그대로 전달

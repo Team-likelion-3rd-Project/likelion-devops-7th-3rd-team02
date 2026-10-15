@@ -25,6 +25,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectAccessChecker projectAccessChecker;
 
     @Transactional
     public ProjectResponse createProject(
@@ -34,7 +35,7 @@ public class ProjectService {
 
         User owner = userRepository.findById(userId)
                 .orElseThrow(
-                        () -> new BusinessException(ErrorCode.NOT_FOUND)
+                        () -> new BusinessException(ErrorCode.USER_NOT_FOUND)
                 );
 
         Project project = new Project(
@@ -52,18 +53,17 @@ public class ProjectService {
                 ProjectRole.OWNER
         );
 
-        projectMemberRepository.save(ownerMember);
+        projectMemberRepository.saveAndFlush(ownerMember);
 
-        return ProjectResponse.from(savedProject);
+        return ProjectResponse.of(savedProject, ProjectRole.OWNER);
     }
 
     @Transactional(readOnly = true)
     public List<ProjectListResponse> getMyProjects(Long userId) {
 
         return projectMemberRepository
-                .findAllByUserId(userId)
+                .findAllWithProjectByUserId(userId)
                 .stream()
-                .map(ProjectMember::getProject)
                 .map(ProjectListResponse::from)
                 .toList();
     }
@@ -74,22 +74,10 @@ public class ProjectService {
             Long projectId
     ) {
 
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(
-                        () -> new BusinessException(ErrorCode.NOT_FOUND)
-                );
+        // 프로젝트 존재(404) → 팀원 여부(403) 순서로 확인
+        ProjectMember membership =
+                projectAccessChecker.getMembership(projectId, userId);
 
-        // 프로젝트에 등록된 멤버인지 확인
-        boolean isMember =
-                projectMemberRepository.existsByProjectIdAndUserId(
-                        projectId,
-                        userId
-                );
-
-        if (!isMember) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
-        }
-
-        return ProjectResponse.from(project);
+        return ProjectResponse.of(membership.getProject(), membership.getRole());
     }
 }
