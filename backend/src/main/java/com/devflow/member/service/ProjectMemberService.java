@@ -8,7 +8,7 @@ import com.devflow.member.entity.ProjectMember;
 import com.devflow.member.repository.ProjectMemberRepository;
 import com.devflow.member.type.ProjectRole;
 import com.devflow.project.entity.Project;
-import com.devflow.project.repository.ProjectRepository;
+import com.devflow.project.service.ProjectAccessChecker;
 import com.devflow.user.entity.User;
 import com.devflow.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ import java.util.List;
 public class ProjectMemberService {
 
     private final ProjectMemberRepository projectMemberRepository;
-    private final ProjectRepository projectRepository;
+    private final ProjectAccessChecker projectAccessChecker;
     private final UserRepository userRepository;
 
     @Transactional
@@ -32,10 +32,7 @@ public class ProjectMemberService {
             ProjectMemberAddRequest request
     ) {
 
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(
-                        () -> new BusinessException(ErrorCode.NOT_FOUND)
-                );
+        Project project = projectAccessChecker.getProject(projectId);
 
         if (!project.getOwner().getId().equals(loginUserId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
@@ -43,7 +40,7 @@ public class ProjectMemberService {
 
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(
-                        () -> new BusinessException(ErrorCode.NOT_FOUND)
+                        () -> new BusinessException(ErrorCode.USER_NOT_FOUND)
                 );
 
         if (projectMemberRepository
@@ -74,13 +71,7 @@ public class ProjectMemberService {
             Long projectId
     ) {
 
-        if (!projectMemberRepository
-                .existsByProjectIdAndUserId(
-                        projectId,
-                        loginUserId
-                )) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
-        }
+        projectAccessChecker.checkMember(projectId, loginUserId);
 
         return projectMemberRepository
                 .findAllByProjectId(projectId)

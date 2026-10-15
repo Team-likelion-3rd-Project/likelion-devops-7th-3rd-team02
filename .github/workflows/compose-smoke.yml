@@ -1,7 +1,8 @@
 name: Compose Smoke Test
 
 # 루트 docker-compose.yml로 PostgreSQL + Backend + Frontend를 실제로 띄우고
-# Frontend(Nginx) → /api → Backend 경로로 회원가입 → 로그인 → 프로젝트 생성까지 확인한다.
+# Frontend(Nginx) → /api → Backend 경로로 회원가입 → 로그인 → 프로젝트·업무 API까지 확인한다.
+# (M3: Flyway로 만든 스키마를 Hibernate validate로 검증, 업무 검색·페이지·수정 계약 확인)
 # (M2 완료 기준: 컨테이너로 앱 실행, probe 통과, 분리된 Frontend에서 로그인)
 
 on:
@@ -64,18 +65,71 @@ jobs:
             -H 'Content-Type: application/json' -d '{not json')
           test "$status" = "400"
 
-      - name: Signup → Login → Me → Create project
+      - name: Flyway migrations applied (V1 baseline schema, V2 indexes)
+        run: |
+          docker compose exec -T postgres psql -U devflow -d devflow -tAc \
+            "select version from flyway_schema_history where success order by installed_rank" | tee versions.txt
+          grep -qx 1 versions.txt && grep -qx 2 versions.txt
+
+      - name: Signup → Login → Me → Create project (role)
         run: |
           set -e
           api=http://localhost:3000/api
-          curl -fsS -X POST $api/auth/signup -H 'Content-Type: application/json' \
-            -d '{"email":"smoke@devflow.dev","password":"password1234","name":"스모크"}' | jq -e '.success'
-          token=$(curl -fsS -X POST $api/auth/login -H 'Content-Type: application/json' \
-            -d '{"email":"smoke@devflow.dev","password":"password1234"}' | jq -r '.data.accessToken')
-          test -n "$token" && test "$token" != "null"
-          curl -fsS $api/users/me -H "Authorization: Bearer $token" | jq -e '.data.email == "smoke@devflow.dev"'
-          curl -fsS -X POST $api/projects -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
-            -d '{"name":"Smoke Project","description":"compose smoke test"}' | jq -e '.data.id > 0'
+          signup() { curl -fsS -X POST $api/auth/signup -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$1\",\"password\":\"password1234\",\"name\":\"$2\"}" | jq -e '.success' > /dev/null; }
+          login() { curl -fsS -X POST $api/auth/login -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$1\",\"password\":\"password1234\"}" | jq -r '.data.accessToken'; }
+          signup smoke@devflow.dev 스모크
+          signup member@devflow.dev 팀원
+          owner=$(login smoke@devflow.dev); member=$(login member@devflow.dev)
+          test -n "$owner" && test "$owner" != "null"
+          curl -fsS $api/users/me -H "Authorization: Bearer $owner" | jq -e '.data.email == "smoke@devflow.dev"'
+
+          curl -fsS -X POST $api/projects -H "Authorization: Bearer $owner" -H 'Content-Type: application/json' \
+            -d '{"name":"Smoke Project","description":"compose smoke test"}' > project.json
+          jq -e '.data.id > 0 and .data.role == "OWNER"' project.json
+          pid=$(jq -r '.data.id' project.json)
+          curl -fsS -X POST $api/projects/$pid/members -H "Authorization: Bearer $owner" -H 'Content-Type: application/json' \
+            -d '{"email":"member@devflow.dev"}' | jq -e '.success'
+          curl -fsS $api/projects -H "Authorization: Bearer $member" | jq -e '.data[0].role == "MEMBER" and .data[0].updatedAt != null'
+          curl -fsS $api/projects/$pid -H "Authorization: Bearer $owner" | jq -e '.data.role == "OWNER"'
+
+          # 없는 프로젝트는 404 PROJECT_NOT_FOUND (팀원 확인보다 먼저)
+          status=$(curl -s -o nf.json -w '%{http_code}' $api/projects/999999/tasks -H "Authorization: Bearer $owner")
+          test "$status" = "404" && jq -e '.code == "PROJECT_NOT_FOUND"' nf.json
+
+          { echo "OWNER_TOKEN=$owner"; echo "PROJECT_ID=$pid"; } >> "$GITHUB_ENV"
+
+      - name: Task search · filter · page · statusCounts · PATCH
+        run: |
+          set -e
+          api=http://localhost:3000/api/projects/$PROJECT_ID/tasks
+          auth="Authorization: Bearer $OWNER_TOKEN"
+          for t in "로그인 API" "로그인 화면" "배포 파이프라인"; do
+            curl -fsS -X POST $api -H "$auth" -H 'Content-Type: application/json' -d "{\"title\":\"$t\"}" | jq -e '.data.issue == null and .data.pullRequest == null' > /dev/null
+          done
+          first=$(curl -fsS "$api?sort=createdAt,desc" -H "$auth" | jq -r '.data.tasks[-1].id')
+          curl -fsS -X PATCH $api/$first/status -H "$auth" -H 'Content-Type: application/json' -d '{"status":"IN_PROGRESS"}' | jq -e '.success'
+
+          # 상태 필터: totalCount는 status 포함, statusCounts는 status 제외 조건
+          curl -fsS "$api?status=TODO" -H "$auth" | tee todo.json | jq -e \
+            '.data.totalCount == 2 and (.data.tasks|length) == 2 and .data.statusCounts.TODO == 2 and .data.statusCounts.IN_PROGRESS == 1 and .data.statusCounts.DONE == 0'
+          # 검색 (대소문자·부분 일치) + 페이지
+          curl -fsS "$api?keyword=%EB%A1%9C%EA%B7%B8%EC%9D%B8" -H "$auth" | jq -e '.data.totalCount == 2'
+          curl -fsS "$api?size=2&page=1&sort=title,asc" -H "$auth" | jq -e '.data.totalCount == 3 and (.data.tasks|length) == 1'
+          # 허용되지 않는 정렬·상태는 400
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$api?sort=password,asc" -H "$auth")" = "400"
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$api?status=WRONG" -H "$auth")" = "400"
+
+          # 업무 수정(T4): 다시 조회해도 유지, 빈 설명은 null
+          curl -fsS -X PATCH $api/$first -H "$auth" -H 'Content-Type: application/json' \
+            -d '{"title":"로그인 API 구현","description":""}' | jq -e '.data.title == "로그인 API 구현" and .data.description == null'
+          curl -fsS $api/$first -H "$auth" | jq -e '.data.title == "로그인 API 구현"'
+          # 최근 수정순 기본 정렬: 방금 수정한 업무가 맨 앞
+          curl -fsS "$api" -H "$auth" | jq -e --argjson id "$first" '.data.tasks[0].id == $id'
+          # 팀원이 아닌 담당자는 생성에서도 400 INVALID_TASK_ASSIGNEE
+          status=$(curl -s -o bad.json -w '%{http_code}' -X POST $api -H "$auth" -H 'Content-Type: application/json' -d '{"title":"x","assigneeId":999999}')
+          test "$status" = "400" && jq -e '.code == "INVALID_TASK_ASSIGNEE"' bad.json
 
       - name: Graceful shutdown
         run: |
