@@ -89,6 +89,8 @@ function ProjectCreateModal({ onClose }: { onClose: () => void }) {
 
     if (failed.length === 0) {
       onClose()
+      // 새 프로젝트의 대시보드로 이동한다. 빈 칸 안내가 다음 할 일(업무 추가, 저장소 연결)을 알려 준다.
+      navigate('/projects')
       return
     }
 

@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { ChevronRight } from 'lucide-react'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 
-import BrandLogo from './BrandLogo'
+import logoMark from '../../assets/logo-mark.svg'
 import ProfileModal from './ProfileModal'
+import ProjectSwitcher from './ProjectSwitcher'
 import MemberModal from '../project/MemberModal'
 import ThemeToggle from './ThemeToggle'
 import { useProjectContext } from '../../hooks/useProjectContext'
+import { useProjectMembers } from '../../hooks/useProjectMembers'
 import { clearAuthStorage } from '../../utils/authStorage'
-import { isProjectOwner, PROJECT_ROLE_LABEL } from '../../utils/projectRole'
+import { isProjectOwner, projectRoleLabel } from '../../utils/projectRole'
 
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
@@ -21,12 +24,13 @@ const navItemClass = ({ isActive }: { isActive: boolean }) =>
       : 'font-medium text-muted hover:bg-hover',
   ].join(' ')
 
-// 설계서 4.1 공통 Layout: 로고, 현재 프로젝트와 내 역할, 이동 메뉴, 사용자와 로그아웃
+// 설계서 4.1 공통 Layout: 로고(대시보드)와 프로젝트 전환, 팀원 박스, 이동 메뉴, 사용자와 로그아웃
 function Sidebar() {
   const navigate = useNavigate()
   const { currentProject, currentUser } = useProjectContext()
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isMemberOpen, setIsMemberOpen] = useState(false)
+  const members = useProjectMembers(currentProject?.id ?? null)
 
   const isOwner = isProjectOwner(currentProject, currentUser?.userId)
 
@@ -44,24 +48,38 @@ function Sidebar() {
 
   return (
     <aside className="flex w-[228px] flex-none flex-col gap-5 border-r border-line bg-chrome px-3.5 py-5 max-[900px]:hidden">
-      <BrandLogo className="px-2" />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          {/* 로고는 대시보드로 가는 지름길이다. 대시보드 메뉴도 그대로 둔다. */}
+          <Link
+            to="/projects"
+            aria-label="대시보드"
+            title="대시보드"
+            className={`flex-none rounded-lg ${focusRing}`}
+          >
+            <img src={logoMark} alt="" className="h-[34px] w-[34px]" />
+          </Link>
+          <ProjectSwitcher />
+        </div>
 
-      {/* 프로젝트 박스를 누르면 팀원 목록 (설계서 10.4 결정) */}
-      {currentProject && (
-        <button
-          type="button"
-          onClick={() => setIsMemberOpen(true)}
-          aria-label={`${currentProject.name} 팀원 보기`}
-          className={`cursor-pointer rounded-[10px] border border-line bg-page px-3 py-2.5 text-left hover:border-accent ${focusRing}`}
-        >
-          <b className="block truncate font-semibold">{currentProject.name}</b>
-          {currentProject.role && (
-            <span className="text-[12px] text-muted">
-              내 역할: {PROJECT_ROLE_LABEL[currentProject.role]}
+        {/* 팀원 박스: 내 역할과 팀원 수, 누르면 팀원 목록 (설계서 10.4) */}
+        {currentProject && (
+          <button
+            type="button"
+            onClick={() => setIsMemberOpen(true)}
+            aria-label={`${currentProject.name} 팀원 보기`}
+            className={`flex cursor-pointer items-center justify-between gap-2 rounded-[9px] border border-line2 px-3 py-2 text-[12.5px] text-muted hover:bg-hover ${focusRing}`}
+          >
+            <span className="truncate">
+              내 역할: {projectRoleLabel(currentProject, currentUser?.userId)}
             </span>
-          )}
-        </button>
-      )}
+            <span className="flex flex-none items-center">
+              {members.members.length > 0 ? `팀원 ${members.members.length}명` : '팀원 보기'}
+              <ChevronRight aria-hidden="true" size={14} />
+            </span>
+          </button>
+        )}
+      </div>
 
       <nav className="flex flex-col gap-0.5">
         <NavLink to="/projects" end className={navItemClass}>
@@ -116,7 +134,11 @@ function Sidebar() {
         <MemberModal
           project={currentProject}
           isOwner={isOwner}
-          onClose={() => setIsMemberOpen(false)}
+          onClose={() => {
+            setIsMemberOpen(false)
+            // 모달에서 팀원을 추가했을 수 있으니 팀원 수를 다시 불러온다.
+            members.reload()
+          }}
         />
       )}
 
