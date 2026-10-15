@@ -25,11 +25,14 @@ function TaskCard({
       type="button"
       onClick={onSelect}
       aria-pressed={isSelected}
-      className={`flex w-full cursor-pointer flex-col gap-2 rounded-[10px] border bg-panel px-3.5 py-3 text-left shadow-panel ${focusRing} ${
+      data-task-id={task.id}
+      className={`flex w-full min-w-0 cursor-pointer flex-col gap-2 rounded-[10px] border bg-panel px-3.5 py-3 text-left shadow-panel ${focusRing} ${
         isSelected ? 'border-accent ring-1 ring-accent' : 'border-line hover:bg-hover'
       }`}
     >
-      <b className="leading-[1.4] font-semibold">{task.title}</b>
+      <b title={task.title} className="block truncate leading-[1.4] font-semibold">
+        {task.title}
+      </b>
 
       <span className="flex flex-wrap items-center gap-1.5 text-[12.5px] text-muted">
         {task.issue && <span className="font-mono">#{task.issue.number}</span>}

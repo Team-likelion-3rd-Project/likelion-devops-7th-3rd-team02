@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import Pagination from '../components/common/Pagination'
@@ -41,6 +41,36 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
 
   const selectedTask = tasks?.find((task) => task.id === selectedTaskId) ?? null
 
+  // 같은 카드를 다시 누르면 닫는다.
+  const toggleTask = (taskId: number) =>
+    setSelectedTaskId((prev) => (prev === taskId ? null : taskId))
+
+  // 상세를 닫으면 포커스를 보던 카드로 돌려준다.
+  const closeDetail = () => {
+    const taskId = selectedTaskId
+    setSelectedTaskId(null)
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>(`[data-task-id="${taskId}"]`)?.focus(),
+    )
+  }
+
+  // Esc로 상세를 닫는다. 어떤 모달이든(사이드바의 팀원·프로필 모달 포함) 열려 있거나
+  // 다른 곳(사이드바 드롭다운 등)이 먼저 처리했으면 넘긴다.
+  const handleEscape = useEffectEvent((event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || event.defaultPrevented) return
+    if (document.querySelector('[role="dialog"]')) return
+    closeDetail()
+  })
+
+  const isDetailOpen = selectedTask !== null
+
+  useEffect(() => {
+    if (!isDetailOpen) return
+    const listener = (event: KeyboardEvent) => handleEscape(event)
+    document.addEventListener('keydown', listener)
+    return () => document.removeEventListener('keydown', listener)
+  }, [isDetailOpen])
+
   const renderBoard = () => {
     if (error) return <ErrorMessage message={error} onRetry={reload} />
     if (isLoading && !tasks) return <Loading message="업무를 불러오는 중입니다." />
@@ -82,7 +112,7 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
           tasks={tasks}
           statusCounts={statusCounts}
           selectedTaskId={selectedTaskId}
-          onSelect={setSelectedTaskId}
+          onSelect={toggleTask}
         />
         <Pagination
           page={page}
@@ -128,13 +158,22 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
         {isLoading && tasks ? '업무를 불러오는 중입니다.' : ''}
       </p>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_340px] items-start gap-5 max-[1200px]:grid-cols-1">
+      {/* 업무를 고르지 않으면 보드가 전체 폭을 쓰고, 고르면 오른쪽에 상세가 열린다 (설계서 4.5). */}
+      <div
+        className={`grid items-start gap-5 max-[1200px]:grid-cols-1 ${
+          isDetailOpen ? 'grid-cols-[minmax(0,1fr)_340px]' : 'grid-cols-1'
+        }`}
+      >
         <div className={isLoading && tasks ? 'opacity-60 transition-opacity' : ''}>
           {renderBoard()}
         </div>
 
         {selectedTask && (
-          <TaskDetailPanel task={selectedTask} onEdit={() => setOpenModal('edit')} />
+          <TaskDetailPanel
+            task={selectedTask}
+            onEdit={() => setOpenModal('edit')}
+            onClose={closeDetail}
+          />
         )}
       </div>
 

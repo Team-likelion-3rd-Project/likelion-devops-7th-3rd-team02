@@ -11,6 +11,7 @@ import DashboardPage from '../pages/DashboardPage'
 import TaskBoardPage from '../pages/TaskBoardPage'
 import CicdPage from '../pages/CicdPage'
 import MonitoringPage from '../pages/MonitoringPage'
+import IncidentsPage from '../pages/IncidentsPage'
 
 function RootRedirect() {
   const accessToken = getAccessToken()
@@ -46,6 +47,7 @@ function AppRouter() {
           }
         >
           <Route path="/projects" element={<DashboardPage />} />
+          <Route path="/incidents" element={<IncidentsPage />} />
           <Route path="/projects/:projectId/tasks" element={<TaskBoardPage />} />
           <Route path="/projects/:projectId/cicd" element={<CicdPage />} />
           <Route

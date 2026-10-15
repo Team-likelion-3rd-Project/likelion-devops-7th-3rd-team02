@@ -12,3 +12,7 @@ export const isProjectOwner = (project: ProjectListItem | null, userId: number |
   if (project.role) return project.role === 'OWNER'
   return project.ownerId === userId
 }
+
+// 역할 표시: 응답의 role, 없으면 OWNER 판단으로 대신한다.
+export const projectRoleLabel = (project: ProjectListItem, userId: number | undefined) =>
+  PROJECT_ROLE_LABEL[isProjectOwner(project, userId) ? 'OWNER' : 'MEMBER']

@@ -21,3 +21,13 @@ export const incidentSummary = (incident: Incident): string | null => {
   const { currentValue, threshold, unit } = incident.metric
   return `${formatMetric(currentValue)}${unit} (기준 ${formatMetric(threshold)}${unit})`
 }
+
+// 장애 표시 기준 (모니터링, 대시보드 배너, 전체 장애가 같이 쓴다)
+// - 열린 장애: 해결되지 않은 장애 (OPEN, ACKNOWLEDGED)
+// - 확인 필요: 아직 아무도 확인하지 않은 장애 (OPEN)
+export const isOpenIncident = (incident: Incident) => incident.status !== 'RESOLVED'
+export const needsCheck = (incident: Incident) => incident.status === 'OPEN'
+
+// 장애를 확인하거나 담당자를 바꾼 뒤 알린다. 사이드바 전체 장애 배지가 다시 불러온다.
+export const INCIDENTS_CHANGED_EVENT = 'devflow:incidents-changed'
+export const notifyIncidentsChanged = () => window.dispatchEvent(new Event(INCIDENTS_CHANGED_EVENT))

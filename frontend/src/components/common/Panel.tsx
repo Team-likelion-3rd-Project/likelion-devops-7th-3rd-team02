@@ -17,7 +17,7 @@ function Panel({
       className={`overflow-hidden rounded-xl border border-line bg-panel shadow-panel ${className}`}
     >
       <div className="flex items-center justify-between gap-3 border-b border-line2 px-[18px] py-3.5">
-        <h2 className="text-[15px] font-semibold">{title}</h2>
+        <h2 className="min-w-0 text-[15px] font-semibold">{title}</h2>
         {action}
       </div>
       {children}

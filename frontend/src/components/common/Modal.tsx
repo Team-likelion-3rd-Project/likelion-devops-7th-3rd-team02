@@ -42,7 +42,7 @@ function Modal({
       >
         {/* 시안 ProjectModal: 폭 520px, radius 14px, 여백 24px, 제목 20px */}
         <div>
-          <h2 id="modal-title" className="text-[20px] font-bold tracking-[-0.02em]">
+          <h2 id="modal-title" className="text-[20px] font-bold tracking-[-0.02em] break-keep [overflow-wrap:anywhere]">
             {title}
           </h2>
           {description && <p className="text-muted">{description}</p>}

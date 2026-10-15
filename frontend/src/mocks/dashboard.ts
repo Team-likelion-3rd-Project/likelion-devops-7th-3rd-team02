@@ -46,6 +46,8 @@ export const fetchMockIncidents = () =>
   mockDelay<Incident[]>([
     {
       id: 1,
+      projectId: 1,
+      projectName: 'DevFlow 서비스',
       title: 'api 응답 시간이 기준(1.0초)을 넘고 있습니다.',
       status: 'OPEN',
       severity: 'WARNING',
@@ -58,6 +60,8 @@ export const fetchMockIncidents = () =>
     },
     {
       id: 2,
+      projectId: 1,
+      projectName: 'DevFlow 서비스',
       title: 'api 파드 재시작이 반복되고 있습니다.',
       status: 'ACKNOWLEDGED',
       severity: 'CRITICAL',
@@ -67,5 +71,21 @@ export const fetchMockIncidents = () =>
       // summary가 없으면 metric으로 요약을 만든다
       metric: { currentValue: 6, threshold: 3, unit: '회' },
       firing: false,
+      acknowledgedAt: minutesAgo(80),
+    },
+    {
+      id: 3,
+      projectId: 1,
+      projectName: 'DevFlow 서비스',
+      title: 'web 오류율이 기준(1%)을 넘었습니다.',
+      status: 'RESOLVED',
+      severity: 'WARNING',
+      occurredAt: minutesAgo(60 * 5),
+      source: 'Alertmanager',
+      assigneeId: 2,
+      metric: { currentValue: 2.3, threshold: 1, unit: '%' },
+      firing: false,
+      acknowledgedAt: minutesAgo(60 * 5 - 5),
+      resolvedAt: minutesAgo(60 * 4),
     },
   ])
