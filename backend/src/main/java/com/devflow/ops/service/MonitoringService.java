@@ -3,7 +3,7 @@ package com.devflow.ops.service;
 import com.devflow.global.exception.BusinessException;
 import com.devflow.global.exception.ErrorCode;
 import com.devflow.global.time.Times;
-import com.devflow.ops.config.OpsProperties;
+import com.devflow.ops.config.CloudEnvironment;
 import com.devflow.ops.dto.OpsDtos;
 import com.devflow.ops.prometheus.PromPoint;
 import com.devflow.ops.prometheus.PrometheusClient;
@@ -36,16 +36,20 @@ public class MonitoringService {
 
     private final PrometheusClient prometheus;
     private final KubeStatusService kubeStatus;
-    private final OpsProperties properties;
     private final Clock clock;
 
-    public OpsDtos.MonitoringSummary summary(OpsProperties.Environment env, String range) {
+    public OpsDtos.MonitoringSummary summary(CloudEnvironment env, String range) {
         String rangeKey = range == null || range.isBlank() ? "1h" : range.trim();
         Duration duration = RANGES.get(rangeKey);
         if (duration == null) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "range는 1h, 6h, 24h 중 하나여야 합니다.");
         }
-        Queries q = new Queries(properties.backendJob());
+        String job = env.metricsJobOrDefault();
+        if (job == null) {
+            throw new BusinessException(ErrorCode.CLOUD_NOT_CONNECTED,
+                    "'" + env.name() + "' 환경에 지표 job(metricsJob 또는 appDeployment)이 설정되지 않았습니다.");
+        }
+        Queries q = new Queries(job);
         String window = rangeKey;
 
         long count = Math.round(orZero(prometheus.scalar(env, q.requestCount(window), TTL)));
@@ -67,7 +71,7 @@ public class MonitoringService {
         );
     }
 
-    private List<OpsDtos.MetricPoint> series(OpsProperties.Environment env, Queries q, Duration duration) {
+    private List<OpsDtos.MetricPoint> series(CloudEnvironment env, Queries q, Duration duration) {
         long step = duration.getSeconds() / POINTS;
         // 캐시가 맞도록 끝 시각을 30초 단위로 내림
         long end = clock.instant().getEpochSecond() / 30 * 30;
@@ -110,7 +114,7 @@ public class MonitoringService {
         return Math.round(value * 10) / 10.0;
     }
 
-    /** 6.3 PromQL. job 라벨은 설정값(devflow.ops.backend-job) */
+    /** 6.3 PromQL. job 라벨은 환경 설정의 metricsJob (기본 backend) */
     record Queries(String job) {
 
         private String sel(String extra) {

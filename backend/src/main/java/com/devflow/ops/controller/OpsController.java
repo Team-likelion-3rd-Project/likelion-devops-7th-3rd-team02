@@ -2,7 +2,7 @@ package com.devflow.ops.controller;
 
 import com.devflow.global.response.ApiResponse;
 import com.devflow.ops.cloud.CloudStatusService;
-import com.devflow.ops.config.Environments;
+import com.devflow.cloud.ProjectEnvironments;
 import com.devflow.ops.dto.OpsDtos;
 import com.devflow.ops.service.EnvironmentService;
 import com.devflow.ops.service.KubeStatusService;
@@ -17,7 +17,8 @@ import java.util.List;
 
 /**
  * 운영 상태 API (Backend-API-구현-목록 K1, K2, O1, E1~E5)
- * env: E1 목록의 name (생략 시 Backend가 떠 있는 환경, 없는 값 404 ENVIRONMENT_NOT_FOUND)
+ * env: 프로젝트에 등록한 환경 이름 (생략 시 기본 환경, 없는 값 404 ENVIRONMENT_NOT_FOUND,
+ * 등록된 환경·필요한 연결이 없으면 404 CLOUD_NOT_CONNECTED — 14.2)
  * 외부 조회 실패: 502 EXTERNAL_API_ERROR / 504 EXTERNAL_API_TIMEOUT (E1은 항상 200)
  */
 @RestController
@@ -26,7 +27,7 @@ import java.util.List;
 public class OpsController {
 
     private final ProjectAccessChecker projectAccessChecker;
-    private final Environments environments;
+    private final ProjectEnvironments environments;
     private final KubeStatusService kubeStatus;
     private final MonitoringService monitoring;
     private final EnvironmentService environmentService;
@@ -43,28 +44,28 @@ public class OpsController {
     public ResponseEntity<ApiResponse<OpsDtos.K8sDeploymentList>> deployments(
             Authentication authentication, @PathVariable Long projectId, @RequestParam(required = false) String env) {
         check(authentication, projectId);
-        return ok("Deployment 상태 조회에 성공했습니다.", kubeStatus.deployments(environments.resolve(env)));
+        return ok("Deployment 상태 조회에 성공했습니다.", kubeStatus.deployments(environments.resolve(projectId, env)));
     }
 
     @GetMapping("/k8s/pods")
     public ResponseEntity<ApiResponse<OpsDtos.K8sPodList>> pods(
             Authentication authentication, @PathVariable Long projectId, @RequestParam(required = false) String env) {
         check(authentication, projectId);
-        return ok("Pod 목록 조회에 성공했습니다.", kubeStatus.pods(environments.resolve(env)));
+        return ok("Pod 목록 조회에 성공했습니다.", kubeStatus.pods(environments.resolve(projectId, env)));
     }
 
     @GetMapping("/k8s/nodes")
     public ResponseEntity<ApiResponse<OpsDtos.NodeList>> nodes(
             Authentication authentication, @PathVariable Long projectId, @RequestParam(required = false) String env) {
         check(authentication, projectId);
-        return ok("노드 상태 조회에 성공했습니다.", kubeStatus.nodes(environments.resolve(env)));
+        return ok("노드 상태 조회에 성공했습니다.", kubeStatus.nodes(environments.resolve(projectId, env)));
     }
 
     @GetMapping("/k8s/hpa")
     public ResponseEntity<ApiResponse<OpsDtos.HpaList>> hpas(
             Authentication authentication, @PathVariable Long projectId, @RequestParam(required = false) String env) {
         check(authentication, projectId);
-        return ok("HPA 상태 조회에 성공했습니다.", kubeStatus.hpas(environments.resolve(env)));
+        return ok("HPA 상태 조회에 성공했습니다.", kubeStatus.hpas(environments.resolve(projectId, env)));
     }
 
     @GetMapping("/monitoring/summary")
@@ -75,7 +76,7 @@ public class OpsController {
             @RequestParam(required = false) String env
     ) {
         check(authentication, projectId);
-        return ok("모니터링 요약 조회에 성공했습니다.", monitoring.summary(environments.resolve(env), range));
+        return ok("모니터링 요약 조회에 성공했습니다.", monitoring.summary(environments.resolve(projectId, env), range));
     }
 
     /** E4: DB 상태 (AWS 환경은 RDS, 온프렘은 postgres_exporter) */
@@ -83,7 +84,7 @@ public class OpsController {
     public ResponseEntity<ApiResponse<OpsDtos.DatabaseStatus>> database(
             Authentication authentication, @PathVariable Long projectId, @RequestParam(required = false) String env) {
         check(authentication, projectId);
-        return ok("DB 상태 조회에 성공했습니다.", cloudStatus.database(environments.resolve(env)));
+        return ok("DB 상태 조회에 성공했습니다.", cloudStatus.database(environments.resolve(projectId, env)));
     }
 
     /** E5: 로드밸런서 상태 (AWS 환경은 ALB, 온프렘은 Traefik) */
@@ -91,7 +92,7 @@ public class OpsController {
     public ResponseEntity<ApiResponse<OpsDtos.LoadBalancerStatus>> loadBalancer(
             Authentication authentication, @PathVariable Long projectId, @RequestParam(required = false) String env) {
         check(authentication, projectId);
-        return ok("로드밸런서 상태 조회에 성공했습니다.", cloudStatus.loadBalancer(environments.resolve(env)));
+        return ok("로드밸런서 상태 조회에 성공했습니다.", cloudStatus.loadBalancer(environments.resolve(projectId, env)));
     }
 
     private void check(Authentication authentication, Long projectId) {

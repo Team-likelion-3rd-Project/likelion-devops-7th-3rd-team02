@@ -14,7 +14,7 @@ import java.time.OffsetDateTime;
  */
 public record DeploymentWebhookRequest(
 
-        @NotNull(message = "projectId는 필수입니다.")
+        // 프로젝트 토큰으로 호출하면 생략 (토큰의 프로젝트). 서버 공용 토큰이면 필수
         Long projectId,
 
         @NotBlank(message = "environment는 필수입니다.")

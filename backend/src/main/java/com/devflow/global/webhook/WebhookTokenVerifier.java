@@ -29,4 +29,23 @@ public final class WebhookTokenVerifier {
             throw new BusinessException(ErrorCode.INVALID_WEBHOOK_TOKEN);
         }
     }
+
+    /** Authorization 헤더의 Bearer 값 (없으면 null) */
+    public static String bearer(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith(PREFIX)) {
+            return null;
+        }
+        String token = authorizationHeader.substring(PREFIX.length()).trim();
+        return token.isEmpty() ? null : token;
+    }
+
+    /** 서버 공용 토큰과 같은지 (예외 없이) */
+    public static boolean matches(String expectedToken, String authorizationHeader) {
+        try {
+            verify(expectedToken, authorizationHeader);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
 }

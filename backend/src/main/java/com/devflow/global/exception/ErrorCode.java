@@ -141,6 +141,24 @@ public enum ErrorCode {
             "로그인 시간이 지났어요. 다시 로그인해 주세요."
     ),
 
+    CLOUD_NOT_CONNECTED(
+            HttpStatus.NOT_FOUND,
+            "CLOUD_NOT_CONNECTED",
+            "클라우드 환경이 연결되지 않았습니다. 프로젝트 설정에서 연결해 주세요."
+    ),
+
+    DUPLICATE_ENVIRONMENT(
+            HttpStatus.CONFLICT,
+            "DUPLICATE_ENVIRONMENT",
+            "같은 이름의 환경이 이미 있습니다."
+    ),
+
+    INVALID_CLOUD_TARGET(
+            HttpStatus.BAD_REQUEST,
+            "INVALID_CLOUD_TARGET",
+            "연결할 수 없는 주소입니다."
+    ),
+
     INTERNAL_SERVER_ERROR(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "INTERNAL_SERVER_ERROR",

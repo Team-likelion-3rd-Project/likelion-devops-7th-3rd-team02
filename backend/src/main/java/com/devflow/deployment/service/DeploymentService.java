@@ -8,8 +8,8 @@ import com.devflow.deployment.repository.DeploymentRepository;
 import com.devflow.global.exception.BusinessException;
 import com.devflow.global.exception.ErrorCode;
 import com.devflow.global.time.Times;
-import com.devflow.ops.config.Environments;
-import com.devflow.ops.config.OpsProperties;
+import com.devflow.cloud.ProjectEnvironments;
+import com.devflow.ops.config.CloudEnvironment;
 import com.devflow.ops.service.HealthRule;
 import com.devflow.ops.service.KubeStatusService;
 import com.devflow.project.entity.Project;
@@ -38,13 +38,13 @@ public class DeploymentService {
     private final DeploymentRepository deploymentRepository;
     private final ProjectAccessChecker projectAccessChecker;
     private final Clock clock;
-    private final Environments environments;
+    private final ProjectEnvironments environments;
     private final KubeStatusService kubeStatus;
 
     /** D3: 배포 기록 저장. pipelineId가 같으면 시작 기록을 완료 기록으로 갱신 */
     @Transactional
-    public DeploymentResponse record(DeploymentWebhookRequest request) {
-        Project project = projectAccessChecker.getProject(request.projectId());
+    public DeploymentResponse record(Long projectId, DeploymentWebhookRequest request) {
+        Project project = projectAccessChecker.getProject(projectId);
         String service = request.service().trim();
 
         Deployment deployment = request.pipelineId() == null
@@ -89,7 +89,7 @@ public class DeploymentService {
         List<DeploymentResponse> deployments = new ArrayList<>(
                 result.getContent().stream().map(DeploymentResponse::from).toList());
         if (pageable.getPageNumber() == 0 && !deployments.isEmpty()) {
-            deployments.set(0, deployments.get(0).withHealth(latestHealth(deployments.get(0))));
+            deployments.set(0, deployments.get(0).withHealth(latestHealth(projectId, deployments.get(0))));
         }
 
         return new DeploymentListResponse(
@@ -100,9 +100,12 @@ public class DeploymentService {
     }
 
     /** 최근 배포의 실행 상태: 그 환경에서 같은 이름 Deployment의 레플리카로 판정. 확인 불가·지표 없음은 null */
-    private String latestHealth(DeploymentResponse latest) {
+    private String latestHealth(Long projectId, DeploymentResponse latest) {
         try {
-            OpsProperties.Environment env = environments.resolve(latest.environment());
+            CloudEnvironment env = environments.find(projectId, latest.environment()).orElse(null);
+            if (env == null || !env.hasPrometheus()) {
+                return null;
+            }
             return kubeStatus.replicas(env, latest.service())
                     .map(replicas -> HealthRule.of(replicas, List.of()))
                     .orElse(null);

@@ -1,7 +1,7 @@
 package com.devflow.ops.service;
 
 import com.devflow.global.time.Times;
-import com.devflow.ops.config.OpsProperties;
+import com.devflow.ops.config.CloudEnvironment;
 import com.devflow.ops.dto.OpsDtos;
 import com.devflow.ops.prometheus.PromSample;
 import com.devflow.ops.prometheus.PrometheusClient;
@@ -32,11 +32,10 @@ public class KubeStatusService {
     static final Duration TTL = Duration.ofSeconds(10);
 
     private final PrometheusClient prometheus;
-    private final OpsProperties properties;
     private final Clock clock;
 
     // ---------- K1 ----------
-    public OpsDtos.K8sDeploymentList deployments(OpsProperties.Environment env) {
+    public OpsDtos.K8sDeploymentList deployments(CloudEnvironment env) {
         List<PromSample> samples = prometheus.query(env,
                 "{__name__=~\"kube_deployment_spec_replicas|kube_deployment_status_replicas_available"
                         + "|kube_deployment_status_replicas_ready|kube_deployment_status_replicas_updated\","
@@ -67,19 +66,22 @@ public class KubeStatusService {
     }
 
     /** Deployment 하나의 준비·목표 레플리카. 지표에 없으면 empty */
-    public Optional<OpsDtos.Replicas> replicas(OpsProperties.Environment env, String deployment) {
+    public Optional<OpsDtos.Replicas> replicas(CloudEnvironment env, String deployment) {
         return deployments(env).deployments().stream()
                 .filter(d -> d.name().equals(deployment))
                 .findFirst()
                 .map(d -> new OpsDtos.Replicas(d.readyReplicas(), d.desiredReplicas()));
     }
 
-    public Optional<OpsDtos.Replicas> backendReplicas(OpsProperties.Environment env) {
-        return replicas(env, properties.backendDeployment());
+    public Optional<OpsDtos.Replicas> backendReplicas(CloudEnvironment env) {
+        if (env.appDeployment() == null) {
+            return Optional.empty();
+        }
+        return replicas(env, env.appDeployment());
     }
 
     // ---------- K2 ----------
-    public OpsDtos.K8sPodList pods(OpsProperties.Environment env) {
+    public OpsDtos.K8sPodList pods(CloudEnvironment env) {
         List<PromSample> samples = prometheus.query(env,
                 "{__name__=~\"kube_pod_status_phase|kube_pod_container_status_restarts_total|kube_pod_container_info"
                         + "|kube_pod_created|kube_pod_container_status_ready|kube_pod_container_status_waiting_reason\","
@@ -161,7 +163,7 @@ public class KubeStatusService {
     }
 
     // ---------- E2 ----------
-    public OpsDtos.NodeList nodes(OpsProperties.Environment env) {
+    public OpsDtos.NodeList nodes(CloudEnvironment env) {
         List<PromSample> info = prometheus.query(env,
                 "{__name__=~\"kube_node_info|kube_node_created|kube_node_role|kube_node_status_condition\"}", TTL);
 
@@ -190,7 +192,7 @@ public class KubeStatusService {
             }
         }
 
-        String label = properties.nodeLabel();
+        String label = env.nodeLabel();
         Map<String, Double> cpu = byLabel(prometheus.query(env,
                 "100 - avg by (" + label + ")(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100", TTL), label);
         Map<String, Double> memory = byLabel(prometheus.query(env,
@@ -226,7 +228,7 @@ public class KubeStatusService {
     }
 
     // ---------- E3 ----------
-    public OpsDtos.HpaList hpas(OpsProperties.Environment env) {
+    public OpsDtos.HpaList hpas(CloudEnvironment env) {
         List<PromSample> samples = prometheus.query(env,
                 "{__name__=~\"kube_horizontalpodautoscaler_info|kube_horizontalpodautoscaler_status_current_replicas"
                         + "|kube_horizontalpodautoscaler_status_desired_replicas|kube_horizontalpodautoscaler_spec_min_replicas"

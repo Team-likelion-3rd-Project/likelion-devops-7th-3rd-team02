@@ -105,28 +105,14 @@ devflow:
     token: ${GITHUB_TOKEN:}
     workflow: ${GITHUB_WORKFLOW:}
 
-  # 운영 상태(K1·K2·O1·E1~E3)는 각 환경의 Prometheus(kube-state-metrics·node-exporter 포함)로 조회한다.
-  # Prometheus 주소가 비어 있는 환경은 "확인 불가(UNREACHABLE)"로 표시된다.
-  ops:
-    current-environment: ${DEVFLOW_ENV:dev}
-    backend-job: ${PROMETHEUS_BACKEND_JOB:backend}
-    backend-deployment: backend
-    node-label: node
-    environments:
-      - name: dev
-        label: 온프레미스 (kubeadm)
-        prometheus-url: ${PROMETHEUS_URL_DEV:${PROMETHEUS_URL:}}
-        namespace: ${K8S_NAMESPACE:devflow}
-      - name: production
-        label: AWS
-        prometheus-url: ${PROMETHEUS_URL_PRODUCTION:}
-        namespace: ${K8S_NAMESPACE:devflow}
-        # E4·E5 (AWS). region이 비어 있으면 AWS 조회를 하지 않는다
-        aws:
-          region: ${AWS_REGION_PRODUCTION:}
-          rds-instance-id: ${AWS_RDS_INSTANCE_ID:}
-          load-balancer-arn: ${AWS_ALB_ARN:}
-          target-group-arn: ${AWS_ALB_TARGET_GROUP_ARN:}
+  # 프로젝트별 클라우드 연결 (Wiki 14장). 환경·Prometheus 주소·AWS 역할은 프로젝트 OWNER가 화면(CL1~CL5)에서 등록한다.
+  cloud:
+    # 사설망(10.x, 192.168.x 등) Prometheus 허용 여부. 루프백·링크 로컬·메타데이터 주소는 항상 차단
+    allow-private-network: ${DEVFLOW_CLOUD_ALLOW_PRIVATE_NETWORK:true}
+    # 사용자 역할 신뢰 정책에 넣을 DevFlow Backend 주체 ARN (화면 안내용). 비우면 AWS 연결 안내에 표시되지 않음
+    aws-principal-arn: ${DEVFLOW_AWS_PRINCIPAL_ARN:}
+    # Prometheus 토큰 암호화 키(base64 32바이트, openssl rand -base64 32). 비우면 JWT Secret에서 파생 — 바꾸면 저장된 토큰을 다시 입력해야 함
+    encryption-key: ${DEVFLOW_ENCRYPTION_KEY:}
 
   # 소셜 로그인 (X1~X3). client-id·secret이 비어 있는 제공자는 비활성(버튼을 누르면 error=oauth_failed)
   # 콜백 주소: {FRONTEND_BASE_URL}/login/oauth2/code/{github|google} 를 각 OAuth App에 등록

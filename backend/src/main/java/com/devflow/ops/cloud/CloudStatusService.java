@@ -1,9 +1,10 @@
 package com.devflow.ops.cloud;
 
+import com.devflow.cloud.ProjectEnvironments;
 import com.devflow.global.external.ExternalApiException;
 import com.devflow.global.external.ExternalCache;
 import com.devflow.global.time.Times;
-import com.devflow.ops.config.OpsProperties;
+import com.devflow.ops.config.CloudEnvironment;
 import com.devflow.ops.dto.OpsDtos;
 import com.devflow.ops.prometheus.PrometheusClient;
 import com.devflow.ops.service.KubeStatusService;
@@ -37,18 +38,18 @@ public class CloudStatusService {
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
-    public OpsDtos.DatabaseStatus database(OpsProperties.Environment env) {
-        return cached("cloud:db:" + env.name(), OpsDtos.DatabaseStatus.class,
-                () -> env.hasAws() ? aws.database(env.aws()) : databaseFromPrometheus(env));
+    public OpsDtos.DatabaseStatus database(CloudEnvironment env) {
+        return cached("cloud:db:" + env.key(), OpsDtos.DatabaseStatus.class,
+                () -> env.hasAws() ? aws.database(env.aws()) : databaseFromPrometheus(ProjectEnvironments.requirePrometheus(env)));
     }
 
-    public OpsDtos.LoadBalancerStatus loadBalancer(OpsProperties.Environment env) {
-        return cached("cloud:lb:" + env.name(), OpsDtos.LoadBalancerStatus.class,
-                () -> env.hasAws() ? aws.loadBalancer(env.aws()) : loadBalancerFromPrometheus(env));
+    public OpsDtos.LoadBalancerStatus loadBalancer(CloudEnvironment env) {
+        return cached("cloud:lb:" + env.key(), OpsDtos.LoadBalancerStatus.class,
+                () -> env.hasAws() ? aws.loadBalancer(env.aws()) : loadBalancerFromPrometheus(ProjectEnvironments.requirePrometheus(env)));
     }
 
     /** 온프렘 PostgreSQL: postgres_exporter + 백업 CronJob 마지막 성공 시각. CPU·남은 공간은 지표가 없어 null */
-    OpsDtos.DatabaseStatus databaseFromPrometheus(OpsProperties.Environment env) {
+    OpsDtos.DatabaseStatus databaseFromPrometheus(CloudEnvironment env) {
         Double up = prometheus.scalar(env, "max(pg_up)", TTL);
         Double connections = prometheus.scalar(env, "sum(pg_stat_database_numbackends)", TTL);
         Double sizeBytes = prometheus.scalar(env, "sum(pg_database_size_bytes)", TTL);
@@ -72,7 +73,7 @@ public class CloudStatusService {
     }
 
     /** 온프렘 Traefik: 최근 5분 요청·5xx·평균 응답 시간, 대상 = 네임스페이스 Deployment 준비 레플리카 */
-    OpsDtos.LoadBalancerStatus loadBalancerFromPrometheus(OpsProperties.Environment env) {
+    OpsDtos.LoadBalancerStatus loadBalancerFromPrometheus(CloudEnvironment env) {
         String service = "service=~\"" + env.namespace() + "-.*\"";
         Double requests = prometheus.scalar(env,
                 "sum(increase(traefik_service_requests_total{" + service + "}[5m]))", TTL);
