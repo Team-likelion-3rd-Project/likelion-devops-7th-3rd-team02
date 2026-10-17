@@ -452,7 +452,7 @@ jobs:
 
           # 2) 같은 이메일(smoke@devflow.dev) 기존 계정에 자동 연결 → 기존 프로젝트가 보임
           start; to=$(callback "code=link&state=$(enc "$state")"); test "$(exchange "${to#*code=}")" = "200"
-          curl -fsS $base/api/projects -H "Authorization: Bearer $(jq -r '.data.accessToken' ex.json)" | jq -e '.data[0].name == "Smoke Project" and .data[0].role == "OWNER"'
+          curl -fsS $base/api/projects -H "Authorization: Bearer $(jq -r '.data.accessToken' ex.json)" | jq -e 'any(.data[]; .name == "Smoke Project" and .role == "OWNER")'
 
           # 3) 이미 다른 GitHub 계정이 연결된 이메일 → account_conflict
           start; test "$(callback "code=conflict&state=$(enc "$state")")" = "http://localhost:3000/oauth/callback?error=account_conflict"
