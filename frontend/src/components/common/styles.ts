@@ -8,6 +8,9 @@ export const buttonClass = `${buttonBase} border-line bg-transparent font-medium
 
 export const primaryButtonClass = `${buttonBase} border-fill bg-fill font-semibold text-onfill hover:brightness-108 disabled:hover:brightness-100`
 
+// 되돌릴 수 없는 동작의 확인 버튼 (삭제 등)
+export const dangerButtonClass = `${buttonBase} border-err bg-err font-semibold text-white hover:brightness-108 disabled:hover:brightness-100`
+
 export const textLinkClass = `text-[13px] text-accent hover:underline ${focusRing}`
 
 // 시안 input/select: 높이 36px, 배경 page, radius 8px

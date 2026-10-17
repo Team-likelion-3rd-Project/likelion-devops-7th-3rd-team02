@@ -35,15 +35,15 @@ function ProjectInfoModal({
     '확인할 수 없어요',
   )
 
-  const cicdPath = `/projects/${project.id}/cicd`
+  const settingsPath = `/projects/${project.id}/settings#repository`
 
-  // 연결 안 됨: 연결할 수 있는 OWNER에게만 CI/CD로 가는 안내를 보여준다.
+  // 연결 안 됨: 연결할 수 있는 OWNER에게만 설정으로 가는 안내를 보여준다.
   const notConnected = (
     <span className="flex flex-wrap gap-x-2">
       <span className={muted}>연결 안 됨</span>
       {isOwner && (
-        <Link to={cicdPath} onClick={onClose} className={textLinkClass}>
-          CI/CD에서 연결
+        <Link to={settingsPath} onClick={onClose} className={textLinkClass}>
+          설정에서 연결
         </Link>
       )}
     </span>

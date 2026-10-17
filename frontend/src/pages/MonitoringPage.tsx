@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 
+import CloudConnectNotice from '../components/common/CloudConnectNotice'
+import EnvironmentSelector from '../components/monitoring/EnvironmentSelector'
 import IncidentAssigneeModal from '../components/monitoring/IncidentAssigneeModal'
 import IncidentList from '../components/monitoring/IncidentList'
 import K8sDeploymentTable from '../components/monitoring/K8sDeploymentTable'
@@ -10,16 +12,48 @@ import SummaryBar from '../components/monitoring/SummaryBar'
 import TrendPanel from '../components/monitoring/TrendPanel'
 import { acknowledgeIncident, updateIncidentAssignee } from '../api/incidentApi'
 import { useMonitoringData } from '../hooks/useMonitoringData'
+import { useProjectContext } from '../hooks/useProjectContext'
 import { useProjectMembers } from '../hooks/useProjectMembers'
 import { formatClock, isStale } from '../utils/date'
+import { CLOUD_NOT_CONNECTED } from '../utils/error'
 import { notifyIncidentsChanged } from '../utils/monitoring'
+import { isProjectOwner } from '../utils/projectRole'
 import type { Incident } from '../types/incident'
 
 // 설계서 4.8 모니터링
 function MonitoringContent({ projectId }: { projectId: number }) {
-  const { range, setRange, incidents, summary, k8sDeployments, pods, collectedAt } =
-    useMonitoringData(projectId)
+  const {
+    range,
+    setRange,
+    env,
+    setEnv,
+    environments,
+    hasNoEnvironment,
+    incidents,
+    summary,
+    k8sDeployments,
+    pods,
+    collectedAt,
+  } = useMonitoringData(projectId)
   const { members } = useProjectMembers(projectId)
+  const { currentProject, currentUser } = useProjectContext()
+  const canConnect = isProjectOwner(currentProject, currentUser?.userId)
+
+  // 환경은 있지만 필요한 연결(Prometheus, 지표 job 등)이 없으면 그 패널만 안내로 바꾼다 (Backend 14.2).
+  // 세 조회가 모두 같은 이유로 막히면 안내 하나로 합친다.
+  const isNotConnected = (state: { errorCode: string }) => state.errorCode === CLOUD_NOT_CONNECTED
+  const opsStates = [summary, k8sDeployments, pods]
+  const isAllNotConnected = hasNoEnvironment || opsStates.every(isNotConnected)
+
+  const notice = (title: string, message: string) => (
+    <CloudConnectNotice
+      projectId={projectId}
+      canConnect={canConnect}
+      title={title}
+      message={message}
+      className="mb-5"
+    />
+  )
 
   const [assigningIncident, setAssigningIncident] = useState<Incident | null>(null)
 
@@ -38,7 +72,10 @@ function MonitoringContent({ projectId }: { projectId: number }) {
             </p>
           )}
         </div>
-        <RangeSelector value={range} onChange={setRange} />
+        <div className="flex flex-wrap items-center gap-3">
+          <EnvironmentSelector environments={environments.data ?? []} value={env} onChange={setEnv} />
+          {!isAllNotConnected && <RangeSelector value={range} onChange={setRange} />}
+        </div>
       </div>
 
       <IncidentList
@@ -59,35 +96,60 @@ function MonitoringContent({ projectId }: { projectId: number }) {
         onAssignRequest={setAssigningIncident}
       />
 
-      <SummaryBar
-        summary={summary.data}
-        range={summary.data?.range ?? range}
-        isLoading={summary.isLoading}
-        error={summary.error}
-        onRetry={summary.reload}
-      />
+      {isAllNotConnected ? (
+        notice(
+          '운영 상태',
+          hasNoEnvironment
+            ? '클라우드를 연결하면 배포 상태, 파드, 지표가 보여요. 장애 알림은 연결과 따로 받아요.'
+            : summary.error,
+        )
+      ) : (
+        <>
+          {isNotConnected(summary) ? (
+            notice('지표', summary.error)
+          ) : (
+            <>
+              <SummaryBar
+                summary={summary.data}
+                range={summary.data?.range ?? range}
+                isLoading={summary.isLoading}
+                error={summary.error}
+                onRetry={summary.reload}
+              />
 
-      <TrendPanel
-        series={summary.data?.series ?? null}
-        range={summary.data?.range ?? range}
-        isLoading={summary.isLoading}
-        error={summary.error}
-        onRetry={summary.reload}
-      />
+              <TrendPanel
+                series={summary.data?.series ?? null}
+                range={summary.data?.range ?? range}
+                isLoading={summary.isLoading}
+                error={summary.error}
+                onRetry={summary.reload}
+              />
+            </>
+          )}
 
-      <K8sDeploymentTable
-        deployments={k8sDeployments.data?.deployments}
-        isLoading={k8sDeployments.isLoading}
-        error={k8sDeployments.error}
-        onRetry={k8sDeployments.reload}
-      />
+          {isNotConnected(k8sDeployments) ? (
+            notice('배포 상태', k8sDeployments.error)
+          ) : (
+            <K8sDeploymentTable
+              deployments={k8sDeployments.data?.deployments}
+              isLoading={k8sDeployments.isLoading}
+              error={k8sDeployments.error}
+              onRetry={k8sDeployments.reload}
+            />
+          )}
 
-      <PodTable
-        pods={pods.data?.pods}
-        isLoading={pods.isLoading}
-        error={pods.error}
-        onRetry={pods.reload}
-      />
+          {isNotConnected(pods) ? (
+            notice('파드', pods.error)
+          ) : (
+            <PodTable
+              pods={pods.data?.pods}
+              isLoading={pods.isLoading}
+              error={pods.error}
+              onRetry={pods.reload}
+            />
+          )}
+        </>
+      )}
 
       {assigningIncident && (
         <IncidentAssigneeModal

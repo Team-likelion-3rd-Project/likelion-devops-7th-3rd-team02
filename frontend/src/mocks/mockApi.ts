@@ -4,6 +4,7 @@ import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { fetchMockDeploymentPage, fetchMockPipelines } from './cicd'
 import { fetchMockIncidents } from './dashboard'
 import { fetchMockK8sDeployments, fetchMockK8sPods, fetchMockMonitoringSummary } from './monitoring'
+import type { CloudEnvironment, WebhookTokenSummary, WebhookTokenType } from '../types/cloud'
 import type { Incident } from '../types/incident'
 import type { GithubRepository } from '../types/integration'
 import type { ProjectMember } from '../types/member'
@@ -99,6 +100,39 @@ const deployedProjectIds = new Set([1])
 
 const incidentsByProject: Record<number, Incident[]> = {}
 
+// 클라우드 환경 (CL1). 프로젝트 1: dev(Prometheus 연결) + production(AWS만), 프로젝트 2: 없음
+const MOCK_PRINCIPAL_ARN = 'arn:aws:iam::111122223333:role/devflow-backend'
+let nextEnvironmentId = 10
+
+const cloudEnvironments: Record<number, CloudEnvironment[]> = {
+  1: [
+    {
+      id: 1, name: 'dev', label: '온프레미스 (kubeadm)', isDefault: true,
+      prometheus: { url: 'http://prometheus.monitoring.svc:9090', hasToken: false },
+      kubernetes: { namespace: 'devflow', appDeployment: 'backend', metricsJob: 'backend', nodeLabel: 'node' },
+      aws: null,
+      awsTrust: { principalArn: MOCK_PRINCIPAL_ARN, externalId: 'devflow-7Kq2mX9pLw' },
+      createdAt: at(60 * 24 * 3), updatedAt: at(60 * 24 * 3),
+    },
+    {
+      id: 2, name: 'production', label: 'AWS', isDefault: false,
+      prometheus: null,
+      kubernetes: { namespace: 'devflow', appDeployment: 'backend', metricsJob: null, nodeLabel: null },
+      aws: {
+        region: 'ap-northeast-2', roleArn: 'arn:aws:iam::123456789012:role/devflow-readonly',
+        rdsInstanceId: 'devflow-db', loadBalancerArn: null, targetGroupArn: null,
+      },
+      awsTrust: { principalArn: MOCK_PRINCIPAL_ARN, externalId: 'devflow-Hn4vQ2rT8s' },
+      createdAt: at(60 * 24 * 2), updatedAt: at(60 * 24 * 2),
+    },
+  ],
+}
+
+// Webhook 토큰 (WT1). 원문은 발급할 때만 돌려준다.
+const webhookTokens: Record<number, WebhookTokenSummary[]> = {
+  1: [{ type: 'deployment', createdAt: at(60 * 24 * 2), lastUsedAt: at(5) }],
+}
+
 // ---------- 헬퍼 ----------
 
 const findProject = (projectId: number) => {
@@ -114,6 +148,82 @@ const toProjectItem = (project: (typeof projects)[number]): ProjectListItem & { 
   ...project,
   role: roleOf(project.id, currentUserId) ?? undefined,
 })
+
+const requireOwner = (projectId: number) => {
+  if (roleOf(projectId, currentUserId) !== 'OWNER') {
+    throw new MockHttpError(403, '프로젝트 소유자만 할 수 있습니다.', 'FORBIDDEN')
+  }
+}
+
+const environmentsOf = (projectId: number) => (cloudEnvironments[projectId] ??= [])
+
+const findEnvironment = (projectId: number, environmentId: number) => {
+  const found = environmentsOf(projectId).find((item) => item.id === environmentId)
+  if (!found) throw new MockHttpError(404, '환경을 찾을 수 없습니다.', 'ENVIRONMENT_NOT_FOUND')
+  return found
+}
+
+// 기본 환경이 먼저, 그다음 등록순 (CL1)
+const sortEnvironments = (projectId: number) =>
+  environmentsOf(projectId).sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.id - b.id)
+
+// CL2·CL3 요청을 저장 형태로. 토큰은 생략하면 유지, ""이면 삭제 (Backend 14.1)
+const applyEnvironment = (projectId: number, target: CloudEnvironment, body: Body) => {
+  const name = String(body.name ?? '')
+  if (!/^[a-z0-9][a-z0-9-]{0,29}$/.test(name)) {
+    throw new MockHttpError(400, '환경 이름은 영문 소문자·숫자·-로 1~30자여야 합니다.', 'INVALID_REQUEST')
+  }
+  if (environmentsOf(projectId).some((item) => item.name === name && item.id !== target.id)) {
+    throw new MockHttpError(409, '이미 같은 이름의 환경이 있습니다.', 'DUPLICATE_ENVIRONMENT')
+  }
+  const prometheus = body.prometheus as { url: string; token?: string } | null
+  const aws = body.aws as CloudEnvironment['aws']
+  if (aws && !/^arn:aws[a-z-]*:iam::\d{12}:role\/.+$/.test(aws.roleArn)) {
+    throw new MockHttpError(400, '역할 ARN 형식이 올바르지 않습니다.', 'INVALID_REQUEST')
+  }
+  const hadToken = target.prometheus?.hasToken ?? false
+  target.name = name
+  target.label = (body.label as string) || name
+  target.prometheus = prometheus
+    ? { url: prometheus.url, hasToken: prometheus.token === undefined ? hadToken : prometheus.token !== '' }
+    : null
+  target.kubernetes = (body.kubernetes as CloudEnvironment['kubernetes']) ?? null
+  target.aws = aws ?? null
+  target.updatedAt = now()
+  if (body.isDefault === true) environmentsOf(projectId).forEach((item) => (item.isDefault = item.id === target.id))
+  if (body.isDefault === false) target.isDefault = false
+}
+
+const ensureDefault = (projectId: number) => {
+  const list = environmentsOf(projectId)
+  if (list.length > 0 && !list.some((item) => item.isDefault)) {
+    list.reduce((first, item) => (item.id < first.id ? item : first)).isDefault = true
+  }
+}
+
+// K1·K2·O1: env 생략 시 기본 환경, 환경이 없거나 Prometheus가 없으면 404 CLOUD_NOT_CONNECTED (Backend 14.2)
+const requirePrometheus = (projectId: number, env: string | undefined) => {
+  const list = environmentsOf(projectId)
+  if (list.length === 0) {
+    throw new MockHttpError(404, '클라우드 환경이 연결되지 않았습니다. 프로젝트 설정에서 연결해 주세요.', 'CLOUD_NOT_CONNECTED')
+  }
+  const target = env ? list.find((item) => item.name === env) : (list.find((item) => item.isDefault) ?? list[0])
+  if (!target) throw new MockHttpError(404, '환경을 찾을 수 없습니다.', 'ENVIRONMENT_NOT_FOUND')
+  if (!target.prometheus) {
+    throw new MockHttpError(404, `'${target.name}' 환경에 Prometheus가 연결되지 않았습니다. 프로젝트 설정에서 연결해 주세요.`, 'CLOUD_NOT_CONNECTED')
+  }
+}
+
+const issueToken = (projectId: number, type: WebhookTokenType) => {
+  requireOwner(projectId)
+  const list = (webhookTokens[projectId] ??= [])
+  const createdAt = now()
+  const existing = list.find((item) => item.type === type)
+  if (existing) Object.assign(existing, { createdAt, lastUsedAt: null })
+  else list.push({ type, createdAt, lastUsedAt: null })
+  const random = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36)).join('')
+  return { type, token: `dfw_${random}`, createdAt }
+}
 
 const membersOf = (projectId: number): ProjectMember[] =>
   memberships
@@ -302,11 +412,71 @@ const routes: [string, string, Handler][] = [
     return incident
   }],
 
-  // Kubernetes·모니터링
-  ['get', '/projects/:projectId/k8s/deployments', () => fetchMockK8sDeployments()],
-  ['get', '/projects/:projectId/k8s/pods', () => fetchMockK8sPods()],
-  ['get', '/projects/:projectId/monitoring/summary', ({ query }) =>
-    fetchMockMonitoringSummary((query.range as MonitoringRange) ?? '1h')],
+  // Kubernetes·모니터링 (프로젝트에 연결한 환경 기준)
+  ['get', '/projects/:projectId/k8s/deployments', ({ params, query }) => {
+    requirePrometheus(params.projectId, query.env)
+    return fetchMockK8sDeployments()
+  }],
+  ['get', '/projects/:projectId/k8s/pods', ({ params, query }) => {
+    requirePrometheus(params.projectId, query.env)
+    return fetchMockK8sPods()
+  }],
+  ['get', '/projects/:projectId/monitoring/summary', ({ params, query }) => {
+    requirePrometheus(params.projectId, query.env)
+    return fetchMockMonitoringSummary((query.range as MonitoringRange) ?? '1h')
+  }],
+
+  // 클라우드 연결 CL1~CL5
+  ['get', '/projects/:projectId/cloud/environments', ({ params }) => sortEnvironments(params.projectId)],
+  ['post', '/projects/:projectId/cloud/environments', ({ params, body }) => {
+    requireOwner(params.projectId)
+    const created: CloudEnvironment = {
+      id: nextEnvironmentId++, name: '', label: '', isDefault: environmentsOf(params.projectId).length === 0,
+      prometheus: null, kubernetes: null, aws: null,
+      awsTrust: { principalArn: MOCK_PRINCIPAL_ARN, externalId: `devflow-${Math.random().toString(36).slice(2, 12)}` },
+      createdAt: now(), updatedAt: now(),
+    }
+    applyEnvironment(params.projectId, created, body)
+    environmentsOf(params.projectId).push(created)
+    ensureDefault(params.projectId)
+    return created
+  }],
+  ['put', '/projects/:projectId/cloud/environments/:environmentId', ({ params, body }) => {
+    requireOwner(params.projectId)
+    const target = findEnvironment(params.projectId, params.environmentId)
+    applyEnvironment(params.projectId, target, body)
+    ensureDefault(params.projectId)
+    return target
+  }],
+  ['delete', '/projects/:projectId/cloud/environments/:environmentId', ({ params }) => {
+    requireOwner(params.projectId)
+    findEnvironment(params.projectId, params.environmentId)
+    cloudEnvironments[params.projectId] = environmentsOf(params.projectId).filter((item) => item.id !== params.environmentId)
+    ensureDefault(params.projectId)
+    return null
+  }],
+  ['post', '/projects/:projectId/cloud/environments/:environmentId/test', async ({ params }) => {
+    requireOwner(params.projectId)
+    const target = findEnvironment(params.projectId, params.environmentId)
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    return {
+      prometheus: target.prometheus
+        ? { status: 'OK', message: 'Prometheus 응답 정상 (up 대상 12개)' }
+        : { status: 'NOT_CONFIGURED', message: null },
+      aws: target.aws
+        ? { status: 'FAILED', message: '역할을 맡을 수 없습니다. 신뢰 정책의 주체와 ExternalId를 확인해 주세요.' }
+        : { status: 'NOT_CONFIGURED', message: null },
+      checkedAt: now(),
+    }
+  }],
+
+  // Webhook 토큰 WT1·WT2 (경로의 type은 문자라 종류별로 둔다)
+  ['get', '/projects/:projectId/webhook-tokens', ({ params }) => {
+    requireOwner(params.projectId)
+    return webhookTokens[params.projectId] ?? []
+  }],
+  ['post', '/projects/:projectId/webhook-tokens/deployment', ({ params }) => issueToken(params.projectId, 'deployment')],
+  ['post', '/projects/:projectId/webhook-tokens/alertmanager', ({ params }) => issueToken(params.projectId, 'alertmanager')],
 ]
 
 const matchRoute = (method: string, path: string) => {

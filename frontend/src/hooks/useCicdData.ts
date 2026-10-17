@@ -49,8 +49,10 @@ export function useCicdData(projectId: number) {
     '배포 이력을 불러오지 못했습니다.',
   )
 
+  // 보여줄 기록이 있을 때만 수집 시각을 표시한다 (연결 전 빈 응답에도 collectedAt이 온다).
   const collectedAt =
-    latestPipeline.data?.collectedAt ?? latestDeployment.data?.collectedAt ?? null
+    (latestPipeline.data?.pipelines.length ? latestPipeline.data.collectedAt : null) ??
+    (latestDeployment.data?.deployments.length ? latestDeployment.data.collectedAt : null)
 
   return {
     github,

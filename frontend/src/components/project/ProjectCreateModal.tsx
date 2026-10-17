@@ -72,7 +72,7 @@ function ProjectCreateModal({ onClose }: { onClose: () => void }) {
     return (
       <Modal
         title="프로젝트가 생성되었습니다."
-        description="저장소 연결에 실패했어요. CI/CD 화면에서 다시 연결할 수 있어요."
+        description="저장소 연결에 실패했어요. 설정 화면에서 다시 연결할 수 있어요."
         onClose={onClose}
         maxWidth="max-w-[460px]"
         footer={
@@ -84,11 +84,11 @@ function ProjectCreateModal({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={() => {
                 onClose()
-                navigate(`/projects/${createdProjectId}/cicd`)
+                navigate(`/projects/${createdProjectId}/settings#repository`)
               }}
               className={primaryButtonClass}
             >
-              CI/CD에서 연결하기
+              설정에서 연결하기
             </button>
           </>
         }
