@@ -1,10 +1,11 @@
 package com.devflow.task.dto;
 
-import jakarta.validation.constraints.NotNull;
-
+/**
+ * PATCH /api/projects/{projectId}/tasks/{taskId}/assignee (T6)
+ * assigneeId가 null이면 담당자 해제
+ */
 public record TaskAssigneeUpdateRequest(
 
-        @NotNull(message = "담당자 ID는 필수입니다.")
         Long assigneeId
 
 ) {
