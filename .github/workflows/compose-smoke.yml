@@ -174,6 +174,26 @@ jobs:
           status=$(curl -s -o bad.json -w '%{http_code}' -X POST $api -H "$auth" -H 'Content-Type: application/json' -d '{"title":"x","assigneeId":999999}')
           test "$status" = "400" && jq -e '.code == "INVALID_TASK_ASSIGNEE"' bad.json
 
+          # T6 담당자 지정 → assigneeId null로 해제
+          curl -fsS -X PATCH $api/$first/assignee -H "$auth" -H 'Content-Type: application/json' -d "{\"assigneeId\":$MEMBER_ID}" \
+            | jq -e --argjson m "$MEMBER_ID" '.data.assigneeId == $m and .data.assigneeName == "팀원"'
+          curl -fsS -X PATCH $api/$first/assignee -H "$auth" -H 'Content-Type: application/json' -d '{"assigneeId":null}' \
+            | jq -e '.data.assigneeId == null and .data.assigneeName == null'
+
+          # T7 삭제: OWNER 또는 담당자만. 담당자가 아닌 팀원 403 → 담당자가 되면 200 → 다시 조회 404
+          mauth="Authorization: Bearer $MEMBER_TOKEN"
+          victim=$(curl -fsS -X POST $api -H "$auth" -H 'Content-Type: application/json' -d '{"title":"삭제할 업무"}' | jq -r '.data.id')
+          status=$(curl -s -o e.json -w '%{http_code}' -X DELETE $api/$victim -H "$mauth")
+          test "$status" = "403" && jq -e '.code == "FORBIDDEN"' e.json
+          curl -fsS -X PATCH $api/$victim/assignee -H "$auth" -H 'Content-Type: application/json' -d "{\"assigneeId\":$MEMBER_ID}" | jq -e '.success'
+          curl -fsS -X DELETE $api/$victim -H "$mauth" | jq -e '.success'
+          status=$(curl -s -o e.json -w '%{http_code}' $api/$victim -H "$auth")
+          test "$status" = "404" && jq -e '.code == "TASK_NOT_FOUND"' e.json
+          # OWNER는 담당자가 아니어도 삭제 가능
+          other=$(curl -fsS -X POST $api -H "$auth" -H 'Content-Type: application/json' -d '{"title":"OWNER 삭제"}' | jq -r '.data.id')
+          curl -fsS -X DELETE $api/$other -H "$auth" | jq -e '.success'
+          curl -fsS "$api" -H "$auth" | jq -e '.data.totalCount == 3'
+
       - name: Deployment webhook (D3) → history (D1)
         run: |
           set -e

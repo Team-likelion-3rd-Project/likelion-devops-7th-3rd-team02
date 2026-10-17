@@ -2,7 +2,9 @@ package com.devflow.task.service;
 
 import com.devflow.global.exception.BusinessException;
 import com.devflow.global.exception.ErrorCode;
+import com.devflow.member.entity.ProjectMember;
 import com.devflow.member.repository.ProjectMemberRepository;
+import com.devflow.member.type.ProjectRole;
 import com.devflow.project.entity.Project;
 import com.devflow.project.service.ProjectAccessChecker;
 import com.devflow.task.dto.TaskAssigneeUpdateRequest;
@@ -160,9 +162,23 @@ public class TaskService {
                 taskId
         );
 
-        task.assignTo(getAssignableUser(projectId, request.assigneeId()));
+        // null이면 담당자 해제
+        task.assignTo(request.assigneeId() == null ? null : getAssignableUser(projectId, request.assigneeId()));
 
         return toFlushedResponse(task);
+    }
+
+    /** 업무 삭제 (T7). OWNER 또는 그 업무의 담당자만 (권한 확정 2026-10-14) */
+    @Transactional
+    public void deleteTask(Long loginUserId, Long projectId, Long taskId) {
+        ProjectMember membership = projectAccessChecker.getMembership(projectId, loginUserId);
+        Task task = getTaskInProject(projectId, taskId);
+
+        boolean assignee = task.getAssignee() != null && task.getAssignee().getId().equals(loginUserId);
+        if (membership.getRole() != ProjectRole.OWNER && !assignee) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "업무는 프로젝트 OWNER 또는 담당자만 삭제할 수 있습니다.");
+        }
+        taskRepository.delete(task);
     }
 
     /** 팀원만 담당자로 지정할 수 있다. 생성·변경 모두 400 INVALID_TASK_ASSIGNEE (API 명세 10.1 #3) */

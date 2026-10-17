@@ -165,6 +165,17 @@ public class TaskController {
         );
     }
 
+    /** T7 업무 삭제: OWNER 또는 담당자 */
+    @DeleteMapping("/{taskId}")
+    public ResponseEntity<ApiResponse<Void>> deleteTask(
+            Authentication authentication,
+            @PathVariable Long projectId,
+            @PathVariable Long taskId
+    ) {
+        taskService.deleteTask((Long) authentication.getPrincipal(), projectId, taskId);
+        return ResponseEntity.ok(ApiResponse.success("업무가 삭제되었습니다.", null));
+    }
+
     @PatchMapping("/{taskId}/assignee")
     public ResponseEntity<ApiResponse<TaskResponse>> updateAssignee(
             Authentication authentication,
