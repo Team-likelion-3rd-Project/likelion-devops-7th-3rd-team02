@@ -73,7 +73,7 @@ jobs:
             -H 'Content-Type: application/json' -d '{not json')
           test "$status" = "400"
 
-      - name: Flyway migrations applied (V1 기준선, V2 인덱스, V3 배포, V4 장애, V5 환경·저장소 연결)
+      - name: Flyway migrations applied (V1 기준선, V2 인덱스, V3 배포, V4 장애, V5 환경·저장소 연결, V6 소셜 로그인)
         run: |
           docker compose exec -T postgres psql -U devflow -d devflow -tAc \
             "select version from flyway_schema_history where success order by installed_rank" | tee versions.txt
@@ -297,18 +297,24 @@ jobs:
 
       - name: Social login (X1~X3) with GitHub OAuth mock
         run: |
-          set -e
+          set -eE
           base=http://localhost:3000
           loc() { grep -i '^location:' "$1" | tr -d '\r' | cut -d' ' -f2-; }
+          # 실패하면 마지막 응답 헤더·본문을 출력
+          trap 'echo "--- start.h"; cat start.h 2>/dev/null; echo "--- cb.h"; cat cb.h 2>/dev/null; echo "--- ex.json"; cat ex.json 2>/dev/null' ERR
+          param() { python3 -c 'import sys,urllib.parse as u; q=u.parse_qs(u.urlsplit(sys.argv[1]).query); print(q.get(sys.argv[2],[""])[0])' "$1" "$2"; }
           start() { # 로그인 시작 → 제공자 인증 주소로 302, 서명 쿠키 발급
             rm -f jar.txt
             curl -s -o /dev/null -D start.h -c jar.txt "$base/oauth2/authorization/github"
             auth=$(loc start.h)
-            echo "$auth" | grep -q '^http://localhost:8089/login/oauth/authorize?'
-            echo "$auth" | grep -q 'redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Foauth2%2Fcode%2Fgithub'
-            state=$(echo "$auth" | sed -n 's/.*[?&]state=\([^&]*\).*/\1/p')
+            case "$auth" in http://localhost:8089/login/oauth/authorize\?*) ;; *) echo "unexpected authorize url: $auth"; false ;; esac
+            test "$(param "$auth" redirect_uri)" = "http://localhost:3000/login/oauth2/code/github"
+            test "$(param "$auth" client_id)" = "smoke-client"
+            state=$(param "$auth" state)
             test -n "$state"
+            grep -qi '^set-cookie: devflow_oauth2_request=' start.h
           }
+          enc() { python3 -c 'import sys,urllib.parse as u; print(u.quote(sys.argv[1], safe=""))' "$1"; }
           callback() { # 제공자가 돌려보낸 것처럼 콜백 호출 → Frontend /oauth/callback 으로 302
             curl -s -o /dev/null -D cb.h -b jar.txt "$base/login/oauth2/code/github?$1"
             loc cb.h
@@ -317,7 +323,7 @@ jobs:
 
           # 1) 새 사용자: 인증된 primary 이메일로 가입 → 1회용 code → JWT
           start
-          to=$(callback "code=octo&state=$state"); echo "$to"
+          to=$(callback "code=octo&state=$(enc "$state")"); echo "$to"
           echo "$to" | grep -q '^http://localhost:3000/oauth/callback?code='
           one=${to#*code=}
           test "$(exchange "$one")" = "200"
@@ -328,19 +334,19 @@ jobs:
           # 소셜 전용 사용자는 이메일 로그인 불가
           test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $base/api/auth/login -H 'Content-Type: application/json' -d '{"email":"octo@devflow.dev","password":"password1234"}')" = "401"
           # 다시 로그인하면 같은 사용자
-          start; to=$(callback "code=octo&state=$state"); test "$(exchange "${to#*code=}")" = "200"
+          start; to=$(callback "code=octo&state=$(enc "$state")"); test "$(exchange "${to#*code=}")" = "200"
           curl -fsS $base/api/users/me -H "Authorization: Bearer $(jq -r '.data.accessToken' ex.json)" | jq -e '.data.email == "octo@devflow.dev"'
 
           # 2) 같은 이메일(smoke@devflow.dev) 기존 계정에 자동 연결 → 기존 프로젝트가 보임
-          start; to=$(callback "code=link&state=$state"); test "$(exchange "${to#*code=}")" = "200"
+          start; to=$(callback "code=link&state=$(enc "$state")"); test "$(exchange "${to#*code=}")" = "200"
           curl -fsS $base/api/projects -H "Authorization: Bearer $(jq -r '.data.accessToken' ex.json)" | jq -e '.data[0].name == "Smoke Project" and .data[0].role == "OWNER"'
 
           # 3) 이미 다른 GitHub 계정이 연결된 이메일 → account_conflict
-          start; test "$(callback "code=conflict&state=$state")" = "http://localhost:3000/oauth/callback?error=account_conflict"
+          start; test "$(callback "code=conflict&state=$(enc "$state")")" = "http://localhost:3000/oauth/callback?error=account_conflict"
           # 4) 인증된 이메일 없음 → email_not_available
-          start; test "$(callback "code=unverified&state=$state")" = "http://localhost:3000/oauth/callback?error=email_not_available"
+          start; test "$(callback "code=unverified&state=$(enc "$state")")" = "http://localhost:3000/oauth/callback?error=email_not_available"
           # 5) 제공자 화면에서 취소 → access_denied
-          start; test "$(callback "error=access_denied&state=$state")" = "http://localhost:3000/oauth/callback?error=access_denied"
+          start; test "$(callback "error=access_denied&state=$(enc "$state")")" = "http://localhost:3000/oauth/callback?error=access_denied"
           # 6) state 불일치(CSRF) → oauth_failed
           start; test "$(callback "code=octo&state=forged")" = "http://localhost:3000/oauth/callback?error=oauth_failed"
           # 7) 설정되지 않은 제공자(Google) → oauth_failed
