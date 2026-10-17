@@ -4,6 +4,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(OpsProperties.class)
+@EnableConfigurationProperties(CloudProperties.class)
 public class OpsConfig {
 }

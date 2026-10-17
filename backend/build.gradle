@@ -44,6 +44,8 @@ dependencies {
     implementation 'software.amazon.awssdk:rds'
     implementation 'software.amazon.awssdk:elasticloadbalancingv2'
     implementation 'software.amazon.awssdk:cloudwatch'
+    // 사용자 계정의 읽기 전용 역할을 AssumeRole (프로젝트별 클라우드 연결)
+    implementation 'software.amazon.awssdk:sts'
 
     // DB 마이그레이션 (버전은 Spring Boot가 관리)
     implementation 'org.flywaydb:flyway-core'

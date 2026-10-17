@@ -21,9 +21,14 @@ public final class ExternalHttp {
     }
 
     public static RestClient.Builder restClient() {
+        return restClient(true);
+    }
+
+    /** 사용자가 등록한 주소를 호출할 때는 리다이렉트를 따라가지 않는다 (SSRF 우회 방지) */
+    public static RestClient.Builder restClient(boolean followRedirects) {
         HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(CONNECT_TIMEOUT)
-                .followRedirects(HttpClient.Redirect.NORMAL)
+                .followRedirects(followRedirects ? HttpClient.Redirect.NORMAL : HttpClient.Redirect.NEVER)
                 .build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
         factory.setReadTimeout(READ_TIMEOUT);

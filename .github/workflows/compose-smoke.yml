@@ -73,11 +73,11 @@ jobs:
             -H 'Content-Type: application/json' -d '{not json')
           test "$status" = "400"
 
-      - name: Flyway migrations applied (V1 기준선, V2 인덱스, V3 배포, V4 장애, V5 환경·저장소 연결, V6 소셜 로그인)
+      - name: Flyway migrations applied (V1 기준선, V2 인덱스, V3 배포, V4 장애, V5 환경·저장소 연결, V6 소셜 로그인, V7 프로젝트 클라우드 연결)
         run: |
           docker compose exec -T postgres psql -U devflow -d devflow -tAc \
             "select version from flyway_schema_history where success order by installed_rank" | tee versions.txt
-          for v in 1 2 3 4 5 6; do grep -qx "$v" versions.txt; done
+          for v in 1 2 3 4 5 6 7; do grep -qx "$v" versions.txt; done
 
       - name: Signup → Login → Me → Create project (role)
         run: |
@@ -107,7 +107,41 @@ jobs:
           test "$status" = "404" && jq -e '.code == "PROJECT_NOT_FOUND"' nf.json
 
           member_id=$(curl -fsS $api/users/me -H "Authorization: Bearer $member" | jq -r '.data.userId')
-          { echo "OWNER_TOKEN=$owner"; echo "MEMBER_TOKEN=$member"; echo "MEMBER_ID=$member_id"; echo "PROJECT_ID=$pid"; } >> "$GITHUB_ENV"
+          # 클라우드 연결이 없는 프로젝트 (운영 화면 "연결 안 됨" 확인용)
+          empty=$(curl -fsS -X POST $api/projects -H "Authorization: Bearer $owner" -H 'Content-Type: application/json' \
+            -d '{"name":"Empty Project"}' | jq -r '.data.id')
+          { echo "OWNER_TOKEN=$owner"; echo "MEMBER_TOKEN=$member"; echo "MEMBER_ID=$member_id"; echo "PROJECT_ID=$pid"; echo "EMPTY_PROJECT_ID=$empty"; } >> "$GITHUB_ENV"
+
+      - name: Project cloud environments (CL1, CL2, 14장) — dev(Prometheus) · production(미연결)
+        run: |
+          set -e
+          api=http://localhost:3000/api/projects/$PROJECT_ID/cloud/environments
+          auth="Authorization: Bearer $OWNER_TOKEN"
+          json='Content-Type: application/json'
+          dev='{"name":"dev","label":"온프레미스 (kubeadm)","isDefault":true,
+                "prometheus":{"url":"http://mock:8080/"},
+                "kubernetes":{"namespace":"devflow","appDeployment":"backend","metricsJob":"backend"}}'
+          # 등록 전 목록은 빈 배열 (팀원도 조회 가능)
+          curl -fsS $api -H "Authorization: Bearer $MEMBER_TOKEN" | jq -e '.data == []'
+          # 변경은 OWNER만
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $api -H "Authorization: Bearer $MEMBER_TOKEN" -H "$json" -d "$dev")" = "403"
+          curl -fsS -X POST $api -H "$auth" -H "$json" -d "$dev" | tee env.json | jq -e '.data
+            | .name == "dev" and .isDefault == true and .prometheus == {"url":"http://mock:8080","hasToken":false}
+              and .kubernetes.nodeLabel == "node" and .aws == null and (.awsTrust.externalId | startswith("devflow-"))
+              and (.createdAt | test("\\+09:00$"))' || { cat env.json; exit 1; }
+          curl -fsS -X POST $api -H "$auth" -H "$json" -d '{"name":"production","label":"AWS"}' | jq -e '.data.isDefault == false and .data.prometheus == null'
+          # 같은 이름 409, 잘못된 이름 400
+          status=$(curl -s -o e.json -w '%{http_code}' -X POST $api -H "$auth" -H "$json" -d "$dev")
+          test "$status" = "409" && jq -e '.code == "DUPLICATE_ENVIRONMENT"' e.json
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $api -H "$auth" -H "$json" -d '{"name":"Prod Env"}')" = "400"
+          # SSRF 차단: 메타데이터·루프백·지원하지 않는 스킴
+          for url in http://169.254.169.254/latest http://127.0.0.1:9090 http://localhost:9090 file:///etc/passwd; do
+            status=$(curl -s -o e.json -w '%{http_code}' -X POST $api -H "$auth" -H "$json" \
+              -d "{\"name\":\"bad\",\"prometheus\":{\"url\":\"$url\"}}")
+            test "$status" = "400" && jq -e '.code == "INVALID_CLOUD_TARGET"' e.json || { echo "not blocked: $url"; cat e.json; exit 1; }
+          done
+          # 기본 환경이 먼저
+          curl -fsS $api -H "$auth" | jq -e '[.data[].name] == ["dev","production"]'
 
       - name: Task search · filter · page · statusCounts · PATCH
         run: |
@@ -256,7 +290,7 @@ jobs:
             and .minReplicas == 2 and .maxReplicas == 6 and .currentCpuUtilization == 72 and .targetCpuUtilization == 60'
           check "/monitoring/summary?range=6h" '.data | .httpRequestCount == 18420 and .errorRate == 0.6 and .avgResponseTimeMs == 1500
             and .cpuUsage == 55.0 and .memoryUsage == 74.0 and .replicas == {"ready":2,"desired":2} and (.series|length) == 12'
-          # E1: dev는 수집 성공(열린 CRITICAL 장애 → DOWN), production은 배포 기록 없음
+          # E1: dev(기본 환경)는 수집 성공(열린 CRITICAL 장애 → DOWN), production은 배포 기록 없음
           check /environments '(.data|length) == 2
             and (.data[0] | .name == "dev" and .reason == null and .health == "DOWN" and .replicas.ready == 2
                  and .currentImageTag == "7f3c2a1" and .openIncidents == 1 and .collectedAt != null)
@@ -268,11 +302,22 @@ jobs:
             and .storageUsedGb == 0.05 and .lastBackupAt == "2026-10-16T09:00:00+09:00" and .cpuUsage == null'
           check /cloud/load-balancer '.data | .source == "PROMETHEUS" and .healthyTargets == 4 and .unhealthyTargets == 0
             and .requestCount == 1200 and .http5xxCount == 3 and .avgResponseTimeMs == 120'
-          test "$(curl -s -o e.json -w '%{http_code}' "$api/cloud/database?env=production" -H "$auth")" = "502" && jq -e '.code == "EXTERNAL_API_ERROR"' e.json
-          # 잘못된 range 400, 없는 env 404, Prometheus 주소 없는 env 502
+          # 잘못된 range 400, 없는 env 404, Prometheus·AWS가 연결되지 않은 env 404 CLOUD_NOT_CONNECTED
           test "$(curl -s -o /dev/null -w '%{http_code}' "$api/monitoring/summary?range=2h" -H "$auth")" = "400"
           test "$(curl -s -o e.json -w '%{http_code}' "$api/k8s/pods?env=prod" -H "$auth")" = "404" && jq -e '.code == "ENVIRONMENT_NOT_FOUND"' e.json
-          test "$(curl -s -o e.json -w '%{http_code}' "$api/k8s/nodes?env=production" -H "$auth")" = "502" && jq -e '.code == "EXTERNAL_API_ERROR"' e.json
+          for path in "/k8s/nodes?env=production" "/cloud/database?env=production" "/monitoring/summary?env=production"; do
+            status=$(curl -s -o e.json -w '%{http_code}' "$api$path" -H "$auth")
+            test "$status" = "404" && jq -e '.code == "CLOUD_NOT_CONNECTED"' e.json || { echo "FAILED: $path"; cat e.json; exit 1; }
+          done
+          # 다른 프로젝트에는 이 프로젝트의 클러스터 상태가 보이지 않는다 (연결 전: E1 빈 목록, 나머지 404)
+          empty=http://localhost:3000/api/projects/$EMPTY_PROJECT_ID
+          curl -fsS $empty/environments -H "$auth" | jq -e '.data == []'
+          for path in /k8s/pods /k8s/nodes /cloud/database /monitoring/summary; do
+            status=$(curl -s -o e.json -w '%{http_code}' "$empty$path" -H "$auth")
+            test "$status" = "404" && jq -e '.code == "CLOUD_NOT_CONNECTED"' e.json || { echo "FAILED: empty $path"; cat e.json; exit 1; }
+          done
+          # 팀원이 아닌 프로젝트는 403
+          test "$(curl -s -o /dev/null -w '%{http_code}' $empty/k8s/pods -H "Authorization: Bearer $MEMBER_TOKEN")" = "403"
 
       - name: GitHub repository (G1, G2) → pipelines (C1)
         run: |
@@ -300,6 +345,68 @@ jobs:
             and (.data.pipelines[1] | .status == "FAILED" and .finishedAt != null and (.stages[] | select(.name == "TEST") | .status == "FAILED"))' p.json \
             || { cat p.json; exit 1; }
           test "$(curl -s -o /dev/null -w '%{http_code}' "$api/cicd/pipelines?size=31" -H "$auth")" = "400"
+
+      - name: Cloud settings (CL3~CL5) · project webhook tokens (WT1, WT2 → D3, I5)
+        run: |
+          set -e
+          source .env
+          base=http://localhost:3000/api/projects/$PROJECT_ID
+          auth="Authorization: Bearer $OWNER_TOKEN"
+          json='Content-Type: application/json'
+          envs=$base/cloud/environments
+          dev_id=$(curl -fsS $envs -H "$auth" | jq -r '.data[] | select(.name == "dev") | .id')
+          prod_id=$(curl -fsS $envs -H "$auth" | jq -r '.data[] | select(.name == "production") | .id')
+
+          # CL5 연결 확인: Prometheus OK, AWS 미설정
+          curl -fsS -X POST $envs/$dev_id/test -H "$auth" | tee t.json | jq -e '.data.prometheus.status == "OK" and .data.aws.status == "NOT_CONFIGURED"' \
+            || { cat t.json; exit 1; }
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $envs/$dev_id/test -H "Authorization: Bearer $MEMBER_TOKEN")" = "403"
+          # CL3: 토큰 입력 → hasToken true, 토큰 생략 → 유지, "" → 삭제. 기본 환경 변경
+          upd() { curl -fsS -X PUT $envs/$dev_id -H "$auth" -H "$json" -d "$1"; }
+          upd '{"name":"dev","prometheus":{"url":"http://mock:8080","token":"smoke-prom-token"},"kubernetes":{"namespace":"devflow","appDeployment":"backend"}}' | jq -e '.data.prometheus.hasToken == true'
+          upd '{"name":"dev","prometheus":{"url":"http://mock:8080"},"kubernetes":{"namespace":"devflow","appDeployment":"backend"}}' | jq -e '.data.prometheus.hasToken == true'
+          upd '{"name":"dev","prometheus":{"url":"http://mock:8080","token":""},"kubernetes":{"namespace":"devflow","appDeployment":"backend"}}' | jq -e '.data.prometheus.hasToken == false'
+          curl -fsS -X PUT $envs/$prod_id -H "$auth" -H "$json" -d '{"name":"production","label":"AWS","isDefault":true}' | jq -e '.data.isDefault == true'
+          curl -fsS $envs -H "$auth" | jq -e '[.data[].name] == ["production","dev"]'
+          # 기본 환경 production은 미연결 → env 생략 시 404
+          test "$(curl -s -o /dev/null -w '%{http_code}' $base/k8s/pods -H "$auth")" = "404"
+          # CL4: 기본 환경 삭제 → 남은 dev가 기본
+          curl -fsS -X DELETE $envs/$prod_id -H "$auth" | jq -e '.success'
+          curl -fsS $envs -H "$auth" | jq -e '(.data|length) == 1 and .data[0].name == "dev" and .data[0].isDefault == true'
+          curl -fsS $base/k8s/pods -H "$auth" | jq -e '(.data.pods|length) == 2'
+
+          # WT2 배포 토큰 발급 (OWNER만, 원문은 한 번만)
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $base/webhook-tokens/deployment -H "Authorization: Bearer $MEMBER_TOKEN")" = "403"
+          dtoken=$(curl -fsS -X POST $base/webhook-tokens/deployment -H "$auth" | tee tk.json | jq -r '.data.token')
+          jq -e '.data.type == "deployment" and (.data.token | startswith("dfw_"))' tk.json
+          hook=http://localhost:3000/api/webhooks/deployments
+          body='{"environment":"dev","service":"backend","commitSha":"9a8b7c6","imageTag":"9a8b7c6","status":"SUCCESS","pipelineId":201}'
+          # 프로젝트 토큰이면 projectId 생략 가능
+          curl -fsS -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" -d "$body" | jq -e '.data.imageTag == "9a8b7c6"'
+          # 토큰의 프로젝트와 다른 projectId → 403
+          status=$(curl -s -o /dev/null -w '%{http_code}' -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" \
+            -d "$(echo "$body" | jq -c --argjson p "$EMPTY_PROJECT_ID" '.projectId = $p')")
+          test "$status" = "403"
+          # 서버 공용 토큰은 projectId 필수 (400)
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $hook -H "Authorization: Bearer $DEPLOY_WEBHOOK_TOKEN" -H "$json" -d "$body")" = "400"
+          # 다른 종류(Alertmanager) 엔드포인트에는 쓸 수 없음
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3000/api/webhooks/alertmanager -H "Authorization: Bearer $dtoken" -H "$json" -d '{"alerts":[]}')" = "401"
+          # WT1 목록에 사용 시각, 원문은 없음
+          curl -fsS $base/webhook-tokens -H "$auth" | jq -e '(.data|length) == 1 and .data[0].type == "deployment" and .data[0].lastUsedAt != null and (.data[0]|has("token")|not)'
+          # 재발급 → 이전 토큰 즉시 401
+          curl -fsS -X POST $base/webhook-tokens/deployment -H "$auth" | jq -e '.data.token != null'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" -d "$body")" = "401"
+
+          # Alertmanager 프로젝트 토큰: 라벨 없이 이 프로젝트로 기록, 다른 프로젝트 라벨은 건너뜀
+          atoken=$(curl -fsS -X POST $base/webhook-tokens/alertmanager -H "$auth" | jq -r '.data.token')
+          alerts=$(jq -nc --arg other "$EMPTY_PROJECT_ID" '{alerts:[
+            {status:"firing", fingerprint:"wt1", labels:{alertname:"PodRestart", severity:"warning"},
+             annotations:{summary:"backend Pod 재시작"}, startsAt:"2026-10-17T01:00:00Z"},
+            {status:"firing", fingerprint:"wt2", labels:{alertname:"Other", devflow_project_id:$other}}]}')
+          curl -fsS -X POST http://localhost:3000/api/webhooks/alertmanager -H "Authorization: Bearer $atoken" -H "$json" -d "$alerts" \
+            | jq -e '.data.created == 1 and .data.skipped == 1'
+          curl -fsS $base/incidents -H "$auth" | jq -e '.data | map(select(.title == "backend Pod 재시작")) | length == 1'
+          curl -fsS http://localhost:3000/api/projects/$EMPTY_PROJECT_ID/incidents -H "$auth" | jq -e '.data == []'
 
       - name: Social login (X1~X3) with GitHub OAuth mock
         run: |

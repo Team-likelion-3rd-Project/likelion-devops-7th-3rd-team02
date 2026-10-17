@@ -1,9 +1,11 @@
 package com.devflow.ops.prometheus;
 
+import com.devflow.cloud.CloudTargetGuard;
+import com.devflow.cloud.ProjectEnvironments;
 import com.devflow.global.external.ExternalApiException;
 import com.devflow.global.external.ExternalCache;
 import com.devflow.global.external.ExternalHttp;
-import com.devflow.ops.config.OpsProperties;
+import com.devflow.ops.config.CloudEnvironment;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -29,16 +31,18 @@ public class PrometheusClient {
 
     private static final String SYSTEM = "Prometheus";
 
-    private final RestClient restClient = ExternalHttp.restClient().build();
+    private final RestClient restClient = ExternalHttp.restClient(false).build();
     private final ExternalCache cache;
     private final ObjectMapper objectMapper;
+    private final CloudTargetGuard guard;
 
-    public PrometheusClient(ExternalCache cache, ObjectMapper objectMapper) {
+    public PrometheusClient(ExternalCache cache, ObjectMapper objectMapper, CloudTargetGuard guard) {
         this.cache = cache;
         this.objectMapper = objectMapper;
+        this.guard = guard;
     }
 
-    public List<PromSample> query(OpsProperties.Environment env, String promql, Duration ttl) {
+    public List<PromSample> query(CloudEnvironment env, String promql, Duration ttl) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("query", promql);
         JsonNode result = post(env, "/api/v1/query", form, ttl);
@@ -51,14 +55,14 @@ public class PrometheusClient {
     }
 
     /** 단일 값 (결과가 여러 줄이면 첫 줄, 없으면 null) */
-    public Double scalar(OpsProperties.Environment env, String promql, Duration ttl) {
+    public Double scalar(CloudEnvironment env, String promql, Duration ttl) {
         List<PromSample> samples = query(env, promql, ttl);
         return samples.isEmpty() ? null : samples.get(0).value();
     }
 
     /** range vector의 첫 시계열 점들 (없으면 빈 목록) */
     public List<PromPoint> range(
-            OpsProperties.Environment env,
+            CloudEnvironment env,
             String promql,
             long startEpoch,
             long endEpoch,
@@ -81,17 +85,25 @@ public class PrometheusClient {
         return points;
     }
 
-    private JsonNode post(OpsProperties.Environment env, String path, MultiValueMap<String, String> form, Duration ttl) {
-        if (!env.hasPrometheus()) {
-            throw ExternalApiException.error("'" + env.name() + "' 환경의 Prometheus 주소가 설정되지 않았습니다.");
-        }
-        String key = "prom:" + env.name() + ":" + path + ":" + form;
-        String body = cache.get(key, ttl, () -> ExternalHttp.call(SYSTEM, () -> restClient.post()
-                .uri(env.prometheusUrl() + path)
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(form)
-                .retrieve()
-                .body(String.class)));
+    private JsonNode post(CloudEnvironment env, String path, MultiValueMap<String, String> form, Duration ttl) {
+        ProjectEnvironments.requirePrometheus(env);
+        // 프로젝트 환경마다 캐시를 나눈다 (다른 프로젝트 결과가 섞이지 않게)
+        String key = "prom:" + env.key() + ":" + path + ":" + form;
+        String body = cache.get(key, ttl, () -> {
+            // 사용자가 등록한 주소: 호출할 때마다 차단 주소인지 다시 확인 (DNS 변경 대비)
+            String baseUrl = guard.check(env.prometheusUrl());
+            return ExternalHttp.call(SYSTEM, () -> restClient.post()
+                    .uri(baseUrl + path)
+                    .headers(h -> {
+                        if (env.prometheusToken() != null) {
+                            h.setBearerAuth(env.prometheusToken());
+                        }
+                    })
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve()
+                    .body(String.class));
+        });
         try {
             JsonNode root = objectMapper.readTree(body);
             if (!"success".equals(root.path("status").asText())) {

@@ -45,8 +45,8 @@ services:
       DEPLOY_WEBHOOK_TOKEN: ${DEPLOY_WEBHOOK_TOKEN:-}
       ALERTMANAGER_WEBHOOK_TOKEN: ${ALERTMANAGER_WEBHOOK_TOKEN:-}
       INCIDENT_AUTO_RESOLVE_AFTER: ${INCIDENT_AUTO_RESOLVE_AFTER:-30m}
-      # 운영 상태·파이프라인 (선택, 비우면 "확인 불가"·빈 목록)
-      PROMETHEUS_URL: ${PROMETHEUS_URL:-}
+      # 운영 상태는 프로젝트 설정 화면에서 환경별로 연결 (Wiki 14장). 파이프라인용 GitHub 토큰은 선택
+      DEVFLOW_ENCRYPTION_KEY: ${DEVFLOW_ENCRYPTION_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       CACHE_TYPE: ${CACHE_TYPE:-memory}
       # 소셜 로그인 (선택). 콜백 주소 http://localhost:3000/login/oauth2/code/{github|google}

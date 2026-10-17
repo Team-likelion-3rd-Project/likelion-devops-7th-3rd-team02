@@ -5,7 +5,7 @@ import com.devflow.incident.dto.AlertmanagerWebhookRequest;
 import com.devflow.incident.dto.AlertmanagerWebhookRequest.Alert;
 import com.devflow.incident.entity.Incident;
 import com.devflow.incident.repository.IncidentRepository;
-import com.devflow.ops.config.Environments;
+import com.devflow.cloud.ProjectEnvironments;
 import com.devflow.project.entity.Project;
 import com.devflow.project.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,9 @@ import java.util.Optional;
  * Alertmanager Webhook 처리 (Backend-API-구현-목록 I5)
  * - firing: 해결 전 같은 알림(fingerprint)이 있으면 갱신, 없으면 새 장애(OPEN)
  * - resolved: 해결 전 같은 알림이 있으면 firing=false (상태는 그대로, 자동 해결 규칙이 처리)
- * DevFlow 프로젝트 라벨이 없거나 없는 프로젝트의 알림은 건너뛴다.
+ * 프로젝트 토큰으로 받으면 그 프로젝트로 기록한다 (devflow_project_id 라벨이 다른 프로젝트면 건너뜀).
+ * 서버 공용 토큰이면 devflow_project_id 라벨이 없거나 없는 프로젝트의 알림은 건너뛴다.
+ * 환경: devflow_env 라벨, 없으면 프로젝트 기본 환경.
  */
 @Slf4j
 @Service
@@ -34,14 +36,14 @@ public class AlertmanagerService {
 
     private final IncidentRepository incidentRepository;
     private final ProjectRepository projectRepository;
-    private final Environments environments;
+    private final ProjectEnvironments environments;
     private final Clock clock;
 
     public record Result(int created, int updated, int skipped) {
     }
 
     @Transactional
-    public Result handle(AlertmanagerWebhookRequest request) {
+    public Result handle(Long forcedProjectId, AlertmanagerWebhookRequest request) {
         int created = 0;
         int updated = 0;
         int skipped = 0;
@@ -51,7 +53,7 @@ public class AlertmanagerService {
         }
 
         for (Alert alert : request.alerts()) {
-            Optional<Project> project = AlertMapper.projectId(alert).flatMap(projectRepository::findById);
+            Optional<Project> project = target(forcedProjectId, alert).flatMap(projectRepository::findById);
             if (project.isEmpty()) {
                 skipped++;
                 log.warn("alert skipped (no devflow_project_id or unknown project): alertname={}",
@@ -66,7 +68,8 @@ public class AlertmanagerService {
                 Incident incident = active.orElseGet(() -> Incident.open(
                         project.get(),
                         fingerprint,
-                        Optional.ofNullable(alert.label("devflow_env")).orElse(environments.currentName()),
+                        Optional.ofNullable(alert.label("devflow_env"))
+                                .orElseGet(() -> environments.defaultName(project.get().getId())),
                         AlertMapper.severity(alert),
                         validTime(alert.startsAt()).orElse(Times.now(clock))
                 ));
@@ -89,6 +92,18 @@ public class AlertmanagerService {
 
         log.info("alertmanager webhook: created={}, updated={}, skipped={}", created, updated, skipped);
         return new Result(created, updated, skipped);
+    }
+
+    /** 알림이 기록될 프로젝트. 프로젝트 토큰이면 라벨이 같은 프로젝트를 가리킬 때만(또는 라벨 없음) */
+    static Optional<Long> target(Long forcedProjectId, Alert alert) {
+        Optional<Long> labeled = AlertMapper.projectId(alert);
+        if (forcedProjectId == null) {
+            return labeled;
+        }
+        if (labeled.isPresent() && !labeled.get().equals(forcedProjectId)) {
+            return Optional.empty();
+        }
+        return Optional.of(forcedProjectId);
     }
 
     private static void describe(Incident incident, Alert alert) {
