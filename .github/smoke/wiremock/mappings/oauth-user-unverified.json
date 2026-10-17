@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/oauth/github/user",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer gho_unverified"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": 9004,
+      "login": "nomail",
+      "name": "No Mail",
+      "email": null
+    }
+  }
+}

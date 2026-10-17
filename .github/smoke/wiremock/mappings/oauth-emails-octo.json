@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/oauth/github/user/emails",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer gho_octo"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": [
+      {
+        "email": "octo@devflow.dev",
+        "primary": true,
+        "verified": true
+      }
+    ]
+  }
+}

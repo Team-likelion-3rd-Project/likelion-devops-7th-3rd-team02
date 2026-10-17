@@ -135,6 +135,12 @@ public enum ErrorCode {
             "외부 시스템 응답이 늦어 정보를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요."
     ),
 
+    INVALID_OAUTH_CODE(
+            HttpStatus.BAD_REQUEST,
+            "INVALID_OAUTH_CODE",
+            "로그인 시간이 지났어요. 다시 로그인해 주세요."
+    ),
+
     INTERNAL_SERVER_ERROR(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "INTERNAL_SERVER_ERROR",

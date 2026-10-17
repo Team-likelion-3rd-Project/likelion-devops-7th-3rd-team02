@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/oauth/github/token",
+    "bodyPatterns": [
+      {
+        "contains": "code=conflict"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "access_token": "gho_conflict",
+      "token_type": "bearer",
+      "scope": "read:user,user:email"
+    }
+  }
+}

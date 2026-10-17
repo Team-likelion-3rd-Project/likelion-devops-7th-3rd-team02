@@ -52,7 +52,8 @@ public class AuthService {
                         )
                 );
 
-        if (!passwordEncoder.matches(
+        // 소셜 로그인 전용 사용자(비밀번호 없음)는 이메일 로그인 불가
+        if (!user.hasPassword() || !passwordEncoder.matches(
                 request.password(),
                 user.getPassword()
         )) {

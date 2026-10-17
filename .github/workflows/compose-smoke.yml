@@ -77,7 +77,7 @@ jobs:
         run: |
           docker compose exec -T postgres psql -U devflow -d devflow -tAc \
             "select version from flyway_schema_history where success order by installed_rank" | tee versions.txt
-          for v in 1 2 3 4 5; do grep -qx "$v" versions.txt; done
+          for v in 1 2 3 4 5 6; do grep -qx "$v" versions.txt; done
 
       - name: Signup → Login → Me → Create project (role)
         run: |
@@ -294,6 +294,58 @@ jobs:
             and (.data.pipelines[1] | .status == "FAILED" and .finishedAt != null and (.stages[] | select(.name == "TEST") | .status == "FAILED"))' p.json \
             || { cat p.json; exit 1; }
           test "$(curl -s -o /dev/null -w '%{http_code}' "$api/cicd/pipelines?size=31" -H "$auth")" = "400"
+
+      - name: Social login (X1~X3) with GitHub OAuth mock
+        run: |
+          set -e
+          base=http://localhost:3000
+          loc() { grep -i '^location:' "$1" | tr -d '\r' | cut -d' ' -f2-; }
+          start() { # 로그인 시작 → 제공자 인증 주소로 302, 서명 쿠키 발급
+            rm -f jar.txt
+            curl -s -o /dev/null -D start.h -c jar.txt "$base/oauth2/authorization/github"
+            auth=$(loc start.h)
+            echo "$auth" | grep -q '^http://localhost:8089/login/oauth/authorize?'
+            echo "$auth" | grep -q 'redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Foauth2%2Fcode%2Fgithub'
+            state=$(echo "$auth" | sed -n 's/.*[?&]state=\([^&]*\).*/\1/p')
+            test -n "$state"
+          }
+          callback() { # 제공자가 돌려보낸 것처럼 콜백 호출 → Frontend /oauth/callback 으로 302
+            curl -s -o /dev/null -D cb.h -b jar.txt "$base/login/oauth2/code/github?$1"
+            loc cb.h
+          }
+          exchange() { curl -s -o ex.json -w '%{http_code}' -X POST $base/api/auth/oauth/token -H 'Content-Type: application/json' -d "{\"code\":\"$1\"}"; }
+
+          # 1) 새 사용자: 인증된 primary 이메일로 가입 → 1회용 code → JWT
+          start
+          to=$(callback "code=octo&state=$state"); echo "$to"
+          echo "$to" | grep -q '^http://localhost:3000/oauth/callback?code='
+          one=${to#*code=}
+          test "$(exchange "$one")" = "200"
+          jwt=$(jq -r '.data.accessToken' ex.json); jq -e '.data.tokenType == "Bearer"' ex.json
+          curl -fsS $base/api/users/me -H "Authorization: Bearer $jwt" | jq -e '.data.email == "octo@devflow.dev" and .data.name == "Octo Smoke"'
+          # 같은 code 재사용 → 400 INVALID_OAUTH_CODE
+          test "$(exchange "$one")" = "400" && jq -e '.code == "INVALID_OAUTH_CODE"' ex.json
+          # 소셜 전용 사용자는 이메일 로그인 불가
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST $base/api/auth/login -H 'Content-Type: application/json' -d '{"email":"octo@devflow.dev","password":"password1234"}')" = "401"
+          # 다시 로그인하면 같은 사용자
+          start; to=$(callback "code=octo&state=$state"); test "$(exchange "${to#*code=}")" = "200"
+          curl -fsS $base/api/users/me -H "Authorization: Bearer $(jq -r '.data.accessToken' ex.json)" | jq -e '.data.email == "octo@devflow.dev"'
+
+          # 2) 같은 이메일(smoke@devflow.dev) 기존 계정에 자동 연결 → 기존 프로젝트가 보임
+          start; to=$(callback "code=link&state=$state"); test "$(exchange "${to#*code=}")" = "200"
+          curl -fsS $base/api/projects -H "Authorization: Bearer $(jq -r '.data.accessToken' ex.json)" | jq -e '.data[0].name == "Smoke Project" and .data[0].role == "OWNER"'
+
+          # 3) 이미 다른 GitHub 계정이 연결된 이메일 → account_conflict
+          start; test "$(callback "code=conflict&state=$state")" = "http://localhost:3000/oauth/callback?error=account_conflict"
+          # 4) 인증된 이메일 없음 → email_not_available
+          start; test "$(callback "code=unverified&state=$state")" = "http://localhost:3000/oauth/callback?error=email_not_available"
+          # 5) 제공자 화면에서 취소 → access_denied
+          start; test "$(callback "error=access_denied&state=$state")" = "http://localhost:3000/oauth/callback?error=access_denied"
+          # 6) state 불일치(CSRF) → oauth_failed
+          start; test "$(callback "code=octo&state=forged")" = "http://localhost:3000/oauth/callback?error=oauth_failed"
+          # 7) 설정되지 않은 제공자(Google) → oauth_failed
+          curl -s -o /dev/null -D g.h "$base/oauth2/authorization/google"
+          test "$(loc g.h)" = "http://localhost:3000/oauth/callback?error=oauth_failed"
 
       - name: Graceful shutdown
         run: |

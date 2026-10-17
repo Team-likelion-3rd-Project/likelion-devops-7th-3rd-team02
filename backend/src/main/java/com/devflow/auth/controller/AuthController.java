@@ -2,6 +2,8 @@ package com.devflow.auth.controller;
 
 import com.devflow.auth.dto.LoginRequest;
 import com.devflow.auth.dto.LoginResponse;
+import com.devflow.auth.dto.OAuthTokenRequest;
+import com.devflow.auth.oauth.OAuthLoginCodeService;
 import com.devflow.auth.dto.SignupRequest;
 import com.devflow.auth.dto.SignupResponse;
 import com.devflow.auth.service.AuthService;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final OAuthLoginCodeService oAuthLoginCodeService;
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(
@@ -45,6 +48,22 @@ public class AuthController {
                 ApiResponse.success(
                         "로그인에 성공했습니다.",
                         response
+                )
+        );
+    }
+
+    /**
+     * X3: 소셜 로그인 1회용 code → 로그인과 같은 { accessToken, tokenType }.
+     * code는 60초, 1회만 사용. 만료·재사용이면 400 INVALID_OAUTH_CODE
+     */
+    @PostMapping("/oauth/token")
+    public ResponseEntity<ApiResponse<LoginResponse>> exchangeOAuthCode(
+            @Valid @RequestBody OAuthTokenRequest request
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "로그인에 성공했습니다.",
+                        oAuthLoginCodeService.exchange(request.code())
                 )
         );
     }

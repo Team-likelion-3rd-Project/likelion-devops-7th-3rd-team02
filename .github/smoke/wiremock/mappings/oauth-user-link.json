@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/oauth/github/user",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer gho_link"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": 9002,
+      "login": "smoke-gh",
+      "name": "스모크 깃허브",
+      "email": null
+    }
+  }
+}

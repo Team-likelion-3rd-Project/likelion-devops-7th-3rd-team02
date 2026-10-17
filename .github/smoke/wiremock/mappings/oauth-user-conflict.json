@@ -1,0 +1,23 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/oauth/github/user",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer gho_conflict"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": 9003,
+      "login": "smoke-gh-2",
+      "name": "다른 계정",
+      "email": null
+    }
+  }
+}

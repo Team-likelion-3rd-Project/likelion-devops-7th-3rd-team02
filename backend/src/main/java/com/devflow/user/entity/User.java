@@ -27,7 +27,8 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, length = 255)
     private String email;
 
-    @Column(nullable = false, length = 255)
+    /** 소셜 로그인만 쓰는 사용자는 null (이메일 로그인 불가) */
+    @Column(length = 255)
     private String password;
 
     @Column(nullable = false, length = 50)
@@ -37,5 +38,14 @@ public class User extends BaseTimeEntity {
         this.email = email;
         this.password = password;
         this.name = name;
+    }
+
+    /** 소셜 로그인으로 처음 가입하는 사용자 (비밀번호 없음) */
+    public static User social(String email, String name) {
+        return new User(email, null, name);
+    }
+
+    public boolean hasPassword() {
+        return password != null && !password.isBlank();
     }
 }

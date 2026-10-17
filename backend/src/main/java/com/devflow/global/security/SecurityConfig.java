@@ -1,5 +1,9 @@
 package com.devflow.global.security;
 
+import com.devflow.auth.oauth.ConfiguredProvidersAuthorizationRequestResolver;
+import com.devflow.auth.oauth.CookieAuthorizationRequestRepository;
+import com.devflow.auth.oauth.DevflowOAuth2UserService;
+import com.devflow.auth.oauth.OAuthLoginHandlers;
 import com.devflow.global.jwt.JwtAuthenticationFilter;
 import java.util.Arrays;
 import java.util.List;
@@ -11,6 +15,8 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -25,6 +31,11 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JsonAuthenticationEntryPoint authenticationEntryPoint;
     private final JsonAccessDeniedHandler accessDeniedHandler;
+    private final ClientRegistrationRepository clientRegistrationRepository;
+    private final OAuth2AuthorizedClientRepository authorizedClientRepository;
+    private final CookieAuthorizationRequestRepository authorizationRequestRepository;
+    private final DevflowOAuth2UserService oAuth2UserService;
+    private final OAuthLoginHandlers oAuthLoginHandlers;
 
     /**
      * 브라우저에서 Backend를 직접 호출할 수 있는 Frontend 주소 목록 (쉼표 구분).
@@ -68,6 +79,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
+                                // 소셜 로그인 시작·콜백 (X1, X2). Frontend 주소를 거쳐 들어온다
+                                "/oauth2/**",
+                                "/login/oauth2/**",
                                 // CI·Alertmanager가 호출. JWT 대신 Webhook 공유 토큰을 컨트롤러에서 확인
                                 "/api/webhooks/**",
                                 "/swagger-ui/**",
@@ -77,6 +91,19 @@ public class SecurityConfig {
                                 "/actuator/prometheus"
                         ).permitAll()
                         .anyRequest().authenticated()
+                )
+
+                // 소셜 로그인 (X1~X3): 세션 대신 서명 쿠키에 진행 상태 저장, 결과는 Frontend 콜백으로 리다이렉트
+                .oauth2Login(oauth -> oauth
+                        .clientRegistrationRepository(clientRegistrationRepository)
+                        .authorizedClientRepository(authorizedClientRepository)
+                        .authorizationEndpoint(endpoint -> endpoint
+                                .authorizationRequestRepository(authorizationRequestRepository)
+                                .authorizationRequestResolver(
+                                        new ConfiguredProvidersAuthorizationRequestResolver(clientRegistrationRepository)))
+                        .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
+                        .successHandler(oAuthLoginHandlers)
+                        .failureHandler(oAuthLoginHandlers)
                 )
 
                 // UsernamePasswordAuthenticationFilter보다

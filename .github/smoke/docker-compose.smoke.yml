@@ -15,3 +15,10 @@ services:
     environment:
       PROMETHEUS_URL_DEV: http://mock:8080
       GITHUB_API_URL: http://mock:8080/github
+      GITHUB_OAUTH_CLIENT_ID: smoke-client
+      GITHUB_OAUTH_CLIENT_SECRET: smoke-secret
+      # 브라우저가 갈 인증 주소는 실제로 열지 않고 Location만 확인한다
+      GITHUB_OAUTH_AUTHORIZATION_URI: http://localhost:8089/login/oauth/authorize
+      GITHUB_OAUTH_TOKEN_URI: http://mock:8080/oauth/github/token
+      GITHUB_OAUTH_USER_INFO_URI: http://mock:8080/oauth/github/user
+      GITHUB_OAUTH_EMAILS_URI: http://mock:8080/oauth/github/user/emails
