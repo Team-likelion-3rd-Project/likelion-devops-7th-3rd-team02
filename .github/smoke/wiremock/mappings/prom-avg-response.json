@@ -6,6 +6,9 @@
     "bodyPatterns": [
       {
         "contains": "seconds_sum"
+      },
+      {
+        "doesNotContain": "traefik"
       }
     ]
   },

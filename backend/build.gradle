@@ -39,6 +39,12 @@ dependencies {
     // 외부 조회 결과 캐시 (ON1: Redis 캐시. Redis가 없으면 메모리 캐시로 동작)
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+    // AWS 리소스 상태 (E4 RDS, E5 ALB) — 읽기 전용 Describe·GetMetricData만 사용
+    implementation platform('software.amazon.awssdk:bom:2.30.38')
+    implementation 'software.amazon.awssdk:rds'
+    implementation 'software.amazon.awssdk:elasticloadbalancingv2'
+    implementation 'software.amazon.awssdk:cloudwatch'
+
     // DB 마이그레이션 (버전은 Spring Boot가 관리)
     implementation 'org.flywaydb:flyway-core'
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
@@ -55,4 +61,9 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+configurations.configureEach {
+    // AWS SDK는 동기 클라이언트만 사용 (비동기 Netty 클라이언트 제외)
+    exclude group: 'software.amazon.awssdk', module: 'netty-nio-client'
 }

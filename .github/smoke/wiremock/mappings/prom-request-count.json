@@ -6,6 +6,9 @@
     "bodyPatterns": [
       {
         "contains": "increase"
+      },
+      {
+        "doesNotContain": "traefik"
       }
     ]
   },

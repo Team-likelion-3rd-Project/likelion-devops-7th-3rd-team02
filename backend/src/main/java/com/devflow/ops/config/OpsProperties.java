@@ -35,7 +35,8 @@ public record OpsProperties(
             String name,
             String label,
             String prometheusUrl,
-            String namespace
+            String namespace,
+            Aws aws
     ) {
 
         public Environment {
@@ -49,6 +50,23 @@ public record OpsProperties(
         public boolean hasPrometheus() {
             return prometheusUrl != null;
         }
+
+        /** AWS 환경이면 E4·E5를 AWS API로, 아니면 Prometheus(온프렘 exporter)로 조회 */
+        public boolean hasAws() {
+            return aws != null && aws.region() != null && !aws.region().isBlank();
+        }
+    }
+
+    /**
+     * AWS 리소스 (E4·E5). 자격 증명은 저장하지 않고 기본 체인(EKS IRSA, EC2 인스턴스 프로파일)을 사용한다.
+     * rds-instance-id: RDS 식별자 / load-balancer-arn·target-group-arn: ALB와 대상 그룹
+     */
+    public record Aws(
+            String region,
+            String rdsInstanceId,
+            String loadBalancerArn,
+            String targetGroupArn
+    ) {
     }
 
     private static String blankTo(String value, String fallback) {
