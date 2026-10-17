@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import KeyValueList from '../common/KeyValueList'
 import Modal from '../common/Modal'
 import { buttonClass, focusRing, textLinkClass } from '../common/styles'
-import { getGithubRepository, getGitlabIntegration } from '../../api/integrationApi'
+import { getGithubRepository } from '../../api/integrationApi'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { useProjectMembers } from '../../hooks/useProjectMembers'
 import { formatDate } from '../../utils/date'
@@ -34,21 +34,16 @@ function ProjectInfoModal({
     `project-info-github-${project.id}`,
     '확인할 수 없어요',
   )
-  const gitlab = useAsyncData(
-    () => getGitlabIntegration(project.id).then((response) => response.data.data ?? null),
-    `project-info-gitlab-${project.id}`,
-    '확인할 수 없어요',
-  )
 
-  const cicdPath = `/projects/${project.id}/cicd`
+  const settingsPath = `/projects/${project.id}/settings#repository`
 
-  // 연결 안 됨: 연결할 수 있는 OWNER에게만 CI/CD로 가는 안내를 보여준다.
+  // 연결 안 됨: 연결할 수 있는 OWNER에게만 설정으로 가는 안내를 보여준다.
   const notConnected = (
     <span className="flex flex-wrap gap-x-2">
       <span className={muted}>연결 안 됨</span>
       {isOwner && (
-        <Link to={cicdPath} onClick={onClose} className={textLinkClass}>
-          CI/CD에서 연결
+        <Link to={settingsPath} onClick={onClose} className={textLinkClass}>
+          설정에서 연결
         </Link>
       )}
     </span>
@@ -107,14 +102,6 @@ function ProjectInfoModal({
                 <ExternalLink aria-hidden="true" size={13} className="flex-none" />
                 <span className="sr-only">(새 탭에서 열림)</span>
               </a>
-            )),
-          },
-          {
-            label: 'GitLab',
-            value: repositoryValue(gitlab, (integration) => (
-              <span className="block truncate font-mono text-[12.5px]" title={integration.projectPath}>
-                {integration.projectPath}
-              </span>
             )),
           },
         ]}

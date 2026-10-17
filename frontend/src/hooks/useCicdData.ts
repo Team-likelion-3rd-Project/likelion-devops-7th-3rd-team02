@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { getPipelines } from '../api/cicdApi'
 import { getDeployments } from '../api/deploymentApi'
-import { getGithubRepository, getGitlabIntegration } from '../api/integrationApi'
+import { getGithubRepository } from '../api/integrationApi'
 import { useAsyncData } from './useAsyncData'
 
 export const CICD_PAGE_SIZE = 10
@@ -16,12 +16,6 @@ export function useCicdData(projectId: number) {
     () => getGithubRepository(projectId).then((response) => response.data.data ?? null),
     `github-repository-${projectId}`,
     'GitHub 저장소 정보를 불러오지 못했습니다.',
-  )
-
-  const gitlab = useAsyncData(
-    () => getGitlabIntegration(projectId).then((response) => response.data.data ?? null),
-    `gitlab-integration-${projectId}`,
-    'GitLab 연결 정보를 불러오지 못했습니다.',
   )
 
   // 현재 배포와 진행 중 파이프라인은 각 목록의 최신 항목이다 (설계서 4.7, 3.6).
@@ -55,12 +49,13 @@ export function useCicdData(projectId: number) {
     '배포 이력을 불러오지 못했습니다.',
   )
 
+  // 보여줄 기록이 있을 때만 수집 시각을 표시한다 (연결 전 빈 응답에도 collectedAt이 온다).
   const collectedAt =
-    latestPipeline.data?.collectedAt ?? latestDeployment.data?.collectedAt ?? null
+    (latestPipeline.data?.pipelines.length ? latestPipeline.data.collectedAt : null) ??
+    (latestDeployment.data?.deployments.length ? latestDeployment.data.collectedAt : null)
 
   return {
     github,
-    gitlab,
     latestPipeline,
     latestDeployment,
     pipelines,

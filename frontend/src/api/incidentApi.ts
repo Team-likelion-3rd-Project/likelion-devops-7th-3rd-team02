@@ -10,6 +10,10 @@ export const getIncidents = (projectId: number | string) =>
 export const acknowledgeIncident = (projectId: number | string, incidentId: number | string) =>
   api.patch<ApiResponse<Incident>>(`/projects/${projectId}/incidents/${incidentId}/ack`)
 
+// 장애 해결 (I6). OPEN·ACKNOWLEDGED 모두 가능, 이미 해결된 장애면 409 INVALID_INCIDENT_STATUS
+export const resolveIncident = (projectId: number | string, incidentId: number | string) =>
+  api.patch<ApiResponse<Incident>>(`/projects/${projectId}/incidents/${incidentId}/resolve`)
+
 // 담당자 변경. 담당자 값은 팀원의 userId (설계서 6.3)
 export const updateIncidentAssignee = (
   projectId: number | string,

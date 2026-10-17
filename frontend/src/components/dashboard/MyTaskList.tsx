@@ -8,8 +8,7 @@ import { buttonClass, textLinkClass } from '../common/styles'
 import { TASK_STATUS } from '../../utils/status'
 import type { Task } from '../../types/task'
 
-// 설계서 4.4 내 작업: 제목, 이슈 번호, PR 상태, 상태
-// 이슈 번호·PR 상태는 업무 응답에 포함 요청 중 (6.10)이라 응답에 생기면 표시한다.
+// 설계서 4.4 내 작업: 제목, 상태 (이슈 번호·PR 상태는 3차 범위에서 제외)
 function MyTaskList({
   projectId,
   tasks,

@@ -1,11 +1,13 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 
-import { getErrorMessage } from '../utils/error'
+import { getErrorCode, getErrorMessage } from '../utils/error'
 
 interface AsyncState<T> {
   data: T | null
   isLoading: boolean
   error: string
+  // Backend 오류 코드. 코드에 따라 안내를 바꿀 때 쓴다 (예: CLOUD_NOT_CONNECTED)
+  errorCode: string
 }
 
 // 패널 하나의 조회 상태 (설계서 5.1, 7.3: 영역별 로딩·오류, 다시 조회 중에도 기존 데이터 유지)
@@ -22,13 +24,14 @@ export function useAsyncData<T>(
     data: null,
     isLoading: requestKey !== null,
     error: '',
+    errorCode: '',
   })
 
   // 요청이 바뀐 렌더에서 바로 로딩 상태로 전환한다.
   const [prevRequestKey, setPrevRequestKey] = useState(requestKey)
   if (requestKey !== prevRequestKey) {
     setPrevRequestKey(requestKey)
-    setState((prev) => ({ ...prev, isLoading: requestKey !== null, error: '' }))
+    setState((prev) => ({ ...prev, isLoading: requestKey !== null, error: '', errorCode: '' }))
   }
 
   const runFetcher = useEffectEvent(fetcher)
@@ -40,7 +43,7 @@ export function useAsyncData<T>(
 
     runFetcher()
       .then((data) => {
-        if (!cancelled) setState({ data, isLoading: false, error: '' })
+        if (!cancelled) setState({ data, isLoading: false, error: '', errorCode: '' })
       })
       .catch((error) => {
         if (!cancelled) {
@@ -48,6 +51,7 @@ export function useAsyncData<T>(
             ...prev,
             isLoading: false,
             error: getErrorMessage(error, fallbackError),
+            errorCode: getErrorCode(error),
           }))
         }
       })
