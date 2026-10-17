@@ -1,5 +1,6 @@
 import type { BadgeTone } from '../components/common/StatusBadge'
 import type { DeploymentStatus, HealthStatus } from '../types/deployment'
+import type { EnvironmentHealth, EnvironmentReason } from '../types/environment'
 import type { IncidentSeverity, IncidentStatus } from '../types/incident'
 import type { PipelineStageName, PipelineStatus } from '../types/pipeline'
 import type { TaskStatus } from '../types/task'
@@ -37,6 +38,19 @@ export const HEALTH_STATUS: Record<HealthStatus, StatusMeta> = {
   HEALTHY: { label: '정상 실행 중', tone: 'ok' },
   DEGRADED: { label: '일부 이상', tone: 'warn' },
   DOWN: { label: '중단됨', tone: 'err' },
+}
+
+// 환경 상태 (E1). HEALTHY·DEGRADED·DOWN은 실행 상태와 같은 말을 쓴다.
+export const ENVIRONMENT_HEALTH: Record<EnvironmentHealth, StatusMeta> = {
+  ...HEALTH_STATUS,
+  UNKNOWN: { label: '확인 불가', tone: 'muted' },
+}
+
+// 확인 불가인 이유 (E1 reason)
+export const ENVIRONMENT_REASON: Record<EnvironmentReason, string> = {
+  NOT_CONNECTED: 'Prometheus가 연결되지 않았어요.',
+  UNREACHABLE: 'Prometheus에 연결할 수 없어요.',
+  NOT_DEPLOYED: '아직 배포 기록이 없어요.',
 }
 
 // 파이프라인 상태 (시안 이력 표: 진행 중 / 성공 / 실패). 상태 값은 확정 전 가정 (types/pipeline.ts)

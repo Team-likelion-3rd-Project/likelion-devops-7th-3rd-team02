@@ -17,7 +17,7 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
 }
 
 // 설계서 4.5 오른쪽 상세 패널: 제목, 상태, 설명, 담당자, 수정 버튼
-// 삭제 버튼과 상태 변경 이력은 표시하지 않는다. 닫기(X), Esc, 같은 카드 다시 선택으로 닫는다.
+// 삭제는 수정 모달에서 한다. 상태 변경 이력은 표시하지 않는다. 닫기(X), Esc, 같은 카드 다시 선택으로 닫는다.
 function TaskDetailPanel({
   task,
   onEdit,

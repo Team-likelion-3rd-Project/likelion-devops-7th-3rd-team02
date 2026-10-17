@@ -214,6 +214,20 @@ const requirePrometheus = (projectId: number, env: string | undefined) => {
   }
 }
 
+// E4·E5: AWS가 있으면 AWS, 없으면 Prometheus, 둘 다 없으면 404 CLOUD_NOT_CONNECTED (Backend 14.2)
+const requireAwsOrPrometheus = (projectId: number, env: string | undefined) => {
+  const list = environmentsOf(projectId)
+  if (list.length === 0) {
+    throw new MockHttpError(404, '클라우드 환경이 연결되지 않았습니다. 프로젝트 설정에서 연결해 주세요.', 'CLOUD_NOT_CONNECTED')
+  }
+  const target = env ? list.find((item) => item.name === env) : (list.find((item) => item.isDefault) ?? list[0])
+  if (!target) throw new MockHttpError(404, '환경을 찾을 수 없습니다.', 'ENVIRONMENT_NOT_FOUND')
+  if (!target.aws && !target.prometheus) {
+    throw new MockHttpError(404, `'${target.name}' 환경에 AWS나 Prometheus가 연결되지 않았습니다. 프로젝트 설정에서 연결해 주세요.`, 'CLOUD_NOT_CONNECTED')
+  }
+  return target
+}
+
 const issueToken = (projectId: number, type: WebhookTokenType) => {
   requireOwner(projectId)
   const list = (webhookTokens[projectId] ??= [])
@@ -286,6 +300,14 @@ const routes: [string, string, Handler][] = [
     users.push(user)
     return { userId: user.userId, email: user.email, name: user.name }
   }],
+  // X3: 목 모드는 버튼이 code=mock-{provider}로 바로 돌아온다. github는 이지민, 그 외는 실패
+  ['post', '/auth/oauth/token', ({ body }) => {
+    if (body.code !== 'mock-github') {
+      throw new MockHttpError(400, '로그인 시간이 지났어요. 다시 로그인해 주세요.', 'INVALID_OAUTH_CODE')
+    }
+    currentUserId = 1
+    return { accessToken: 'mock-token-1', tokenType: 'Bearer' }
+  }],
   ['get', '/users/me', () => {
     const { password: _password, ...user } = users.find((item) => item.userId === currentUserId)!
     void _password
@@ -352,13 +374,23 @@ const routes: [string, string, Handler][] = [
   }],
   ['patch', '/projects/:projectId/tasks/:taskId/assignee', ({ params, body }) => {
     const found = findTask(params.projectId, params.taskId)
-    const assigneeId = Number(body.assigneeId)
+    // null이면 담당자 해제 (T6)
+    const assigneeId = body.assigneeId === null ? null : Number(body.assigneeId)
     Object.assign(found, {
       assigneeId,
       assigneeName: users.find((user) => user.userId === assigneeId)?.name ?? null,
       updatedAt: now(),
     })
     return found
+  }],
+  // T7: OWNER 또는 그 업무의 담당자만
+  ['delete', '/projects/:projectId/tasks/:taskId', ({ params }) => {
+    const found = findTask(params.projectId, params.taskId)
+    if (roleOf(params.projectId, currentUserId) !== 'OWNER' && found.assigneeId !== currentUserId) {
+      throw new MockHttpError(403, '업무를 삭제할 권한이 없습니다.', 'FORBIDDEN')
+    }
+    tasks.splice(tasks.indexOf(found), 1)
+    return null
   }],
 
   // 저장소 연결
@@ -405,6 +437,14 @@ const routes: [string, string, Handler][] = [
     if (incident.status === 'OPEN') Object.assign(incident, { status: 'ACKNOWLEDGED', acknowledgedAt: now() })
     return incident
   }],
+  // I6: OPEN·ACKNOWLEDGED 모두 해결 가능, 해결된 장애는 409
+  ['patch', '/projects/:projectId/incidents/:incidentId/resolve', async ({ params }) => {
+    const incident = (await incidentsOf(params.projectId)).find((item) => item.id === params.incidentId)
+    if (!incident) throw new MockHttpError(404, '장애를 찾을 수 없습니다.', 'INCIDENT_NOT_FOUND')
+    if (incident.status === 'RESOLVED') throw new MockHttpError(409, '이미 해결된 장애입니다.', 'INVALID_INCIDENT_STATUS')
+    Object.assign(incident, { status: 'RESOLVED', resolvedAt: now() })
+    return incident
+  }],
   ['patch', '/projects/:projectId/incidents/:incidentId/assignee', async ({ params, body }) => {
     const incident = (await incidentsOf(params.projectId)).find((item) => item.id === params.incidentId)
     if (!incident) throw new MockHttpError(404, '장애를 찾을 수 없습니다.', 'INCIDENT_NOT_FOUND')
@@ -424,6 +464,54 @@ const routes: [string, string, Handler][] = [
   ['get', '/projects/:projectId/monitoring/summary', ({ params, query }) => {
     requirePrometheus(params.projectId, query.env)
     return fetchMockMonitoringSummary((query.range as MonitoringRange) ?? '1h')
+  }],
+
+  // 환경·인프라 E1~E5
+  ['get', '/projects/:projectId/environments', ({ params }) =>
+    sortEnvironments(params.projectId).map((environment) => {
+      const connected = environment.prometheus !== null
+      const deployed = deployedProjectIds.has(params.projectId)
+      return {
+        name: environment.name,
+        label: environment.label,
+        health: connected && deployed ? 'HEALTHY' : 'UNKNOWN',
+        reason: !connected ? 'NOT_CONNECTED' : !deployed ? 'NOT_DEPLOYED' : null,
+        currentImageTag: deployed ? 'v0.9.4-a41e9d7' : null,
+        lastDeployedAt: deployed ? at(12) : null,
+        replicas: connected && deployed ? { ready: 2, desired: 2 } : null,
+        openIncidents: environment.isDefault ? 1 : 0,
+        collectedAt: connected ? now() : null,
+      }
+    })],
+  ['get', '/projects/:projectId/k8s/nodes', ({ params, query }) => {
+    requirePrometheus(params.projectId, query.env)
+    return {
+      nodes: [
+        { name: 'k8s-master', roles: ['control-plane'], ready: true, cpuUsage: 38.5, memoryUsage: 61.2, kubeletVersion: 'v1.31.2', createdAt: at(60 * 24 * 5) },
+        { name: 'k8s-worker-1', roles: ['worker'], ready: true, cpuUsage: 55, memoryUsage: 72.4, kubeletVersion: 'v1.31.2', createdAt: at(60 * 24 * 5) },
+        { name: 'k8s-worker-2', roles: ['worker'], ready: false, cpuUsage: null, memoryUsage: null, kubeletVersion: 'v1.31.2', createdAt: at(60 * 24 * 5) },
+      ],
+      collectedAt: now(),
+    }
+  }],
+  ['get', '/projects/:projectId/k8s/hpa', ({ params, query }) => {
+    requirePrometheus(params.projectId, query.env)
+    return {
+      hpas: [{ name: 'backend-hpa', target: 'backend', currentReplicas: 3, desiredReplicas: 4, minReplicas: 2, maxReplicas: 6, currentCpuUtilization: 72, targetCpuUtilization: 60 }],
+      collectedAt: now(),
+    }
+  }],
+  ['get', '/projects/:projectId/cloud/database', ({ params, query }) => {
+    const target = requireAwsOrPrometheus(params.projectId, query.env)
+    return target.aws
+      ? { source: 'RDS', identifier: target.aws.rdsInstanceId, engine: 'PostgreSQL 17.2', status: 'AVAILABLE', multiAz: true, cpuUsage: 12.3, connections: 8, storageUsedGb: 4.21, freeStorageGb: 15.79, lastBackupAt: at(60 * 18), collectedAt: now() }
+      : { source: 'PROMETHEUS', identifier: null, engine: null, status: 'AVAILABLE', multiAz: null, cpuUsage: null, connections: 5, storageUsedGb: 0.42, freeStorageGb: null, lastBackupAt: null, collectedAt: now() }
+  }],
+  ['get', '/projects/:projectId/cloud/load-balancer', ({ params, query }) => {
+    const target = requireAwsOrPrometheus(params.projectId, query.env)
+    return target.aws
+      ? { source: 'ALB', name: 'devflow-alb', healthyTargets: 2, unhealthyTargets: 0, requestCount: 1200, http5xxCount: 3, avgResponseTimeMs: 120, collectedAt: now() }
+      : { source: 'PROMETHEUS', name: null, healthyTargets: 2, unhealthyTargets: 1, requestCount: 640, http5xxCount: 0, avgResponseTimeMs: 85.4, collectedAt: now() }
   }],
 
   // 클라우드 연결 CL1~CL5

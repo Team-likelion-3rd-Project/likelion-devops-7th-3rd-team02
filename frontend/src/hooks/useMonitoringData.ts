@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { getCloudEnvironments } from '../api/cloudApi'
 import { getIncidents } from '../api/incidentApi'
@@ -12,8 +13,9 @@ import type { MonitoringRange } from '../types/monitoring'
 export function useMonitoringData(projectId: number) {
   // 기본 범위 1시간 (설계서 3.8)
   const [range, setRange] = useState<MonitoringRange>('1h')
-  // null: 프로젝트 기본 환경 (env 생략)
-  const [env, setEnv] = useState<string | null>(null)
+  // null: 프로젝트 기본 환경 (env 생략). 대시보드 환경 카드는 ?env=로 고른 채 들어온다.
+  const [searchParams] = useSearchParams()
+  const [env, setEnv] = useState<string | null>(() => searchParams.get('env'))
 
   const incidents = useAsyncData(
     () => getIncidents(projectId).then((response) => response.data.data ?? []),
@@ -31,8 +33,13 @@ export function useMonitoringData(projectId: number) {
   // 환경 목록을 못 불러온 경우에는 기본 환경으로 그대로 조회해 각 패널이 결과를 보여준다.
   const hasNoEnvironment = environments.data !== null && environments.data.length === 0
   const canQueryOps = (environments.data !== null || environments.error !== '') && !hasNoEnvironment
-  const envKey = env ?? 'default'
-  const envParam = env ?? undefined
+  // 주소의 env가 프로젝트에 없는 환경이면 기본 환경으로 본다.
+  const knownEnv =
+    env !== null && environments.data !== null && !environments.data.some((item) => item.name === env)
+      ? null
+      : env
+  const envKey = knownEnv ?? 'default'
+  const envParam = knownEnv ?? undefined
 
   // 범위를 바꾸면 요약과 추이를 같은 range로 다시 조회한다.
   // 응답에 어느 기간의 값인지 함께 담아, 다시 조회하는 동안 라벨과 값이 어긋나지 않게 한다.
@@ -73,7 +80,7 @@ export function useMonitoringData(projectId: number) {
   return {
     range,
     setRange,
-    env,
+    env: knownEnv,
     setEnv,
     environments,
     hasNoEnvironment,

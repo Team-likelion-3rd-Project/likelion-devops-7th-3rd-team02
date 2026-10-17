@@ -12,6 +12,7 @@ import TaskFilterBar from '../components/task/TaskFilterBar'
 import { useProjectContext } from '../hooks/useProjectContext'
 import { useProjectMembers } from '../hooks/useProjectMembers'
 import { TASK_PAGE_SIZE, useProjectTasks } from '../hooks/useProjectTasks'
+import { isProjectOwner } from '../utils/projectRole'
 
 type OpenModal = 'create' | 'edit' | null
 
@@ -186,7 +187,16 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
           projectId={projectId}
           task={selectedTask}
           members={members}
+          canDelete={
+            isProjectOwner(currentProject, currentUser?.userId) ||
+            (selectedTask.assigneeId !== null && selectedTask.assigneeId === currentUser?.userId)
+          }
           onSaved={reload}
+          onDeleted={() => {
+            // 지운 업무의 카드가 없으니 포커스는 돌려주지 않고 상세만 닫는다.
+            setSelectedTaskId(null)
+            reload()
+          }}
           onClose={() => setOpenModal(null)}
         />
       )}

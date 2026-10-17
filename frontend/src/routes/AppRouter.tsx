@@ -7,6 +7,7 @@ import MainLayout from '../layouts/MainLayout'
 
 import LoginPage from '../pages/LoginPage'
 import SignupPage from '../pages/SignupPage'
+import OAuthCallbackPage from '../pages/OAuthCallbackPage'
 import DashboardPage from '../pages/DashboardPage'
 import TaskBoardPage from '../pages/TaskBoardPage'
 import CicdPage from '../pages/CicdPage'
@@ -39,6 +40,7 @@ function AppRouter() {
 
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
         <Route
           element={

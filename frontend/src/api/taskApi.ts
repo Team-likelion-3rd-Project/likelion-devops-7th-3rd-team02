@@ -30,10 +30,11 @@ export const updateTaskStatus = (
     { status },
   )
 
+// assigneeId가 null이면 담당자 해제 (Backend T6, 2026-10-18)
 export const updateTaskAssignee = (
   projectId: number | string,
   taskId: number | string,
-  assigneeId: number,
+  assigneeId: number | null,
 ) =>
   api.patch<ApiResponse<Task>>(
     `/projects/${projectId}/tasks/${taskId}/assignee`,
@@ -46,3 +47,7 @@ export const updateTask = (
   taskId: number | string,
   data: TaskUpdateRequest,
 ) => api.patch<ApiResponse<Task>>(`/projects/${projectId}/tasks/${taskId}`, data)
+
+// 업무 삭제 (Backend T7). OWNER 또는 그 업무의 담당자만, 그 외 팀원은 403
+export const deleteTask = (projectId: number | string, taskId: number | string) =>
+  api.delete<ApiResponse<null>>(`/projects/${projectId}/tasks/${taskId}`)

@@ -8,3 +8,6 @@ export const inputClass = `h-[42px] w-full min-w-0 rounded-lg border border-line
 export const primaryButtonClass = `inline-flex h-[42px] w-full cursor-pointer items-center justify-center rounded-lg border border-fill bg-fill px-3.5 font-semibold text-onfill hover:brightness-108 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:brightness-100 ${focusRing}`
 
 export const iconButtonClass = `absolute top-1/2 right-2.5 flex -translate-y-1/2 cursor-pointer items-center rounded text-muted hover:text-ink ${focusRing}`
+
+// 소셜 로그인 버튼 (보조 버튼, 높이 42px)
+export const secondaryButtonClass = `inline-flex h-[42px] w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-line bg-panel px-3.5 font-medium text-ink hover:bg-hover ${focusRing}`
