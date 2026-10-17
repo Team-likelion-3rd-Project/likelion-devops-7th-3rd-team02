@@ -1,6 +1,7 @@
 package com.devflow.ops.controller;
 
 import com.devflow.global.response.ApiResponse;
+import com.devflow.ops.cloud.CloudStatusService;
 import com.devflow.ops.config.Environments;
 import com.devflow.ops.dto.OpsDtos;
 import com.devflow.ops.service.EnvironmentService;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 운영 상태 API (Backend-API-구현-목록 K1, K2, O1, E1~E3)
+ * 운영 상태 API (Backend-API-구현-목록 K1, K2, O1, E1~E5)
  * env: E1 목록의 name (생략 시 Backend가 떠 있는 환경, 없는 값 404 ENVIRONMENT_NOT_FOUND)
  * 외부 조회 실패: 502 EXTERNAL_API_ERROR / 504 EXTERNAL_API_TIMEOUT (E1은 항상 200)
  */
@@ -29,6 +30,7 @@ public class OpsController {
     private final KubeStatusService kubeStatus;
     private final MonitoringService monitoring;
     private final EnvironmentService environmentService;
+    private final CloudStatusService cloudStatus;
 
     @GetMapping("/environments")
     public ResponseEntity<ApiResponse<List<OpsDtos.EnvironmentSummary>>> environments(
@@ -74,6 +76,22 @@ public class OpsController {
     ) {
         check(authentication, projectId);
         return ok("모니터링 요약 조회에 성공했습니다.", monitoring.summary(environments.resolve(env), range));
+    }
+
+    /** E4: DB 상태 (AWS 환경은 RDS, 온프렘은 postgres_exporter) */
+    @GetMapping("/cloud/database")
+    public ResponseEntity<ApiResponse<OpsDtos.DatabaseStatus>> database(
+            Authentication authentication, @PathVariable Long projectId, @RequestParam(required = false) String env) {
+        check(authentication, projectId);
+        return ok("DB 상태 조회에 성공했습니다.", cloudStatus.database(environments.resolve(env)));
+    }
+
+    /** E5: 로드밸런서 상태 (AWS 환경은 ALB, 온프렘은 Traefik) */
+    @GetMapping("/cloud/load-balancer")
+    public ResponseEntity<ApiResponse<OpsDtos.LoadBalancerStatus>> loadBalancer(
+            Authentication authentication, @PathVariable Long projectId, @RequestParam(required = false) String env) {
+        check(authentication, projectId);
+        return ok("로드밸런서 상태 조회에 성공했습니다.", cloudStatus.loadBalancer(environments.resolve(env)));
     }
 
     private void check(Authentication authentication, Long projectId) {

@@ -108,4 +108,33 @@ public final class OpsDtos {
             OffsetDateTime collectedAt
     ) {
     }
+
+    // E4 (source: RDS | PROMETHEUS). 가져올 수 없는 값은 null
+    public record DatabaseStatus(
+            String source,
+            String identifier,
+            String engine,
+            String status,
+            Boolean multiAz,
+            Double cpuUsage,
+            Integer connections,
+            Double storageUsedGb,
+            Double freeStorageGb,
+            OffsetDateTime lastBackupAt,
+            OffsetDateTime collectedAt
+    ) {
+    }
+
+    // E5 (source: ALB | PROMETHEUS). 요청 수·5xx 수는 최근 5분 합계
+    public record LoadBalancerStatus(
+            String source,
+            String name,
+            int healthyTargets,
+            int unhealthyTargets,
+            Long requestCount,
+            Long http5xxCount,
+            Double avgResponseTimeMs,
+            OffsetDateTime collectedAt
+    ) {
+    }
 }

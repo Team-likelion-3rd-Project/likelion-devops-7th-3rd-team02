@@ -263,6 +263,12 @@ jobs:
             and (.data[1] | .name == "production" and .health == "UNKNOWN" and .reason == "NOT_DEPLOYED" and .replicas == null)'
           # D1: 최근 배포(frontend)의 health는 frontend Deployment 레플리카로 판정
           check "/deployments?size=3" '.data.deployments[0].health == "HEALTHY" and .data.deployments[1].health == null'
+          # E4·E5: 온프렘은 Prometheus(postgres_exporter, 백업 CronJob, Traefik)
+          check /cloud/database '.data | .source == "PROMETHEUS" and .status == "AVAILABLE" and .connections == 8
+            and .storageUsedGb == 0.05 and .lastBackupAt == "2026-10-16T09:00:00+09:00" and .cpuUsage == null'
+          check /cloud/load-balancer '.data | .source == "PROMETHEUS" and .healthyTargets == 4 and .unhealthyTargets == 0
+            and .requestCount == 1200 and .http5xxCount == 3 and .avgResponseTimeMs == 120'
+          test "$(curl -s -o e.json -w '%{http_code}' "$api/cloud/database?env=production" -H "$auth")" = "502" && jq -e '.code == "EXTERNAL_API_ERROR"' e.json
           # 잘못된 range 400, 없는 env 404, Prometheus 주소 없는 env 502
           test "$(curl -s -o /dev/null -w '%{http_code}' "$api/monitoring/summary?range=2h" -H "$auth")" = "400"
           test "$(curl -s -o e.json -w '%{http_code}' "$api/k8s/pods?env=prod" -H "$auth")" = "404" && jq -e '.code == "ENVIRONMENT_NOT_FOUND"' e.json
