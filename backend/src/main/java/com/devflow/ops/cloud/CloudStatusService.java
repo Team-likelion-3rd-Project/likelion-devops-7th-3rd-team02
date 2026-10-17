@@ -7,6 +7,7 @@ import com.devflow.ops.config.OpsProperties;
 import com.devflow.ops.dto.OpsDtos;
 import com.devflow.ops.prometheus.PrometheusClient;
 import com.devflow.ops.service.KubeStatusService;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -115,7 +116,10 @@ public class CloudStatusService {
             }
         });
         try {
-            return objectMapper.readValue(json, type);
+            // 캐시에서 다시 읽을 때 +09:00 오프셋을 UTC(Z)로 바꾸지 않도록
+            return objectMapper.readerFor(type)
+                    .without(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
+                    .readValue(json);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw ExternalApiException.error("상태 정보를 처리하지 못했습니다.");
         }
