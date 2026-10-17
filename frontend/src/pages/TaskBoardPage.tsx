@@ -4,7 +4,6 @@ import { useParams } from 'react-router-dom'
 import Pagination from '../components/common/Pagination'
 import { EmptyState, ErrorMessage, Loading } from '../components/common/PanelState'
 import { buttonClass, primaryButtonClass } from '../components/common/styles'
-import GithubIssueImportModal from '../components/task/GithubIssueImportModal'
 import TaskBoard from '../components/task/TaskBoard'
 import TaskCreateModal from '../components/task/TaskCreateModal'
 import TaskDetailPanel from '../components/task/TaskDetailPanel'
@@ -14,11 +13,11 @@ import { useProjectContext } from '../hooks/useProjectContext'
 import { useProjectMembers } from '../hooks/useProjectMembers'
 import { TASK_PAGE_SIZE, useProjectTasks } from '../hooks/useProjectTasks'
 
-type OpenModal = 'create' | 'edit' | 'import' | null
+type OpenModal = 'create' | 'edit' | null
 
 // 설계서 4.5 작업 보드
 function TaskBoardContent({ projectId }: { projectId: number }) {
-  const { currentProject } = useProjectContext()
+  const { currentProject, currentUser } = useProjectContext()
   const { members } = useProjectMembers(projectId)
   const {
     tasks,
@@ -89,18 +88,13 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
         <EmptyState
           message="등록된 업무가 없어요."
           action={
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setOpenModal('import')} className={buttonClass}>
-                GitHub 이슈 가져오기
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpenModal('create')}
-                className={primaryButtonClass}
-              >
-                작업 추가
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setOpenModal('create')}
+              className={primaryButtonClass}
+            >
+              작업 추가
+            </button>
           }
         />
       )
@@ -112,6 +106,7 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
           tasks={tasks}
           statusCounts={statusCounts}
           selectedTaskId={selectedTaskId}
+          currentUserId={currentUser?.userId}
           onSelect={toggleTask}
         />
         <Pagination
@@ -132,23 +127,23 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[24px] font-bold tracking-[-0.02em]">작업 보드</h1>
-          {currentProject && (
-            <p className="mt-1 text-[13px] text-muted">{currentProject.name}</p>
-          )}
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 text-[13px] text-muted">
+            {currentProject && <span>{currentProject.name}</span>}
+            {/* 카드 왼쪽 막대의 뜻 */}
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="h-3.5 w-[3px] rounded-full bg-accent" />
+              내 작업
+            </span>
+          </p>
         </div>
 
-        <div className="flex gap-2">
-          <button type="button" onClick={() => setOpenModal('import')} className={buttonClass}>
-            GitHub 이슈 가져오기
-          </button>
-          <button
-            type="button"
-            onClick={() => setOpenModal('create')}
-            className={primaryButtonClass}
-          >
-            작업 추가
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setOpenModal('create')}
+          className={primaryButtonClass}
+        >
+          작업 추가
+        </button>
       </div>
 
       <TaskFilterBar filters={filters} members={members} onChange={updateFilters} />
@@ -192,14 +187,6 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
           task={selectedTask}
           members={members}
           onSaved={reload}
-          onClose={() => setOpenModal(null)}
-        />
-      )}
-
-      {openModal === 'import' && (
-        <GithubIssueImportModal
-          projectId={projectId}
-          onImported={reload}
           onClose={() => setOpenModal(null)}
         />
       )}

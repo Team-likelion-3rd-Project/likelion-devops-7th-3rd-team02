@@ -14,13 +14,11 @@ function CurrentDeploymentPanel({
   isLoading,
   error,
   onRetry,
-  isConnected,
 }: {
   deployment: Deployment | null | undefined
   isLoading: boolean
   error: string
   onRetry: () => void
-  isConnected: boolean
 }) {
   const status = deployment
     ? deployment.health
@@ -29,10 +27,10 @@ function CurrentDeploymentPanel({
     : null
 
   const renderBody = () => {
-    if (!isConnected) return <EmptyState message="저장소를 연결하면 확인할 수 있어요." />
     if (error) return <ErrorMessage message={error} onRetry={onRetry} />
     if (isLoading && deployment === undefined) return <Loading message="배포 정보를 불러오는 중입니다." />
-    if (!deployment) return <EmptyState message="아직 배포 기록이 없어요." />
+    // 배포 기록은 저장소와 무관하게 CI가 Webhook(D3)으로 보낸다.
+    if (!deployment) return <EmptyState message="아직 배포 기록이 없어요. CI가 배포를 기록하면 여기에 보여요." />
 
     return (
       <div className="px-[18px] py-4">
@@ -59,7 +57,7 @@ function CurrentDeploymentPanel({
   return (
     <Panel
       title="현재 배포"
-      action={status && isConnected && <StatusBadge tone={status.tone}>{status.label}</StatusBadge>}
+      action={status && <StatusBadge tone={status.tone}>{status.label}</StatusBadge>}
     >
       {renderBody()}
     </Panel>

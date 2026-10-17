@@ -5,7 +5,7 @@ import DeploymentTable from '../components/cicd/DeploymentTable'
 import IntegrationPanel from '../components/cicd/IntegrationPanel'
 import PipelineStrip from '../components/cicd/PipelineStrip'
 import PipelineTable from '../components/cicd/PipelineTable'
-import { connectGithub, connectGitlab } from '../api/integrationApi'
+import { connectGithub } from '../api/integrationApi'
 import { CICD_PAGE_SIZE, useCicdData } from '../hooks/useCicdData'
 import { useProjectContext } from '../hooks/useProjectContext'
 import { formatClock } from '../utils/date'
@@ -15,7 +15,6 @@ import { isProjectOwner } from '../utils/projectRole'
 function CicdContent({ projectId }: { projectId: number }) {
   const {
     github,
-    gitlab,
     latestPipeline,
     latestDeployment,
     pipelines,
@@ -28,14 +27,15 @@ function CicdContent({ projectId }: { projectId: number }) {
   } = useCicdData(projectId)
   const { currentProject, currentUser } = useProjectContext()
 
-  // 파이프라인·배포는 GitLab 프로젝트에서 가져오므로 GitLab 연결 전에는 안내만 표시한다 (설계서 9.7).
-  const isGitlabConnected = gitlab.data !== null
+  // 파이프라인(C1)은 연결된 GitHub 저장소의 Actions 실행 기록이라, 연결이 없다고 확인되면 안내만 표시한다 (설계서 9.7).
+  // 배포 이력(D1)은 CI가 Webhook(D3)으로 보내므로 저장소 연결과 무관하게 표시한다.
+  const isRepositoryMissing = !github.isLoading && !github.error && github.data === null
 
   return (
     <>
       <div className="mb-5">
         <h1 className="text-[24px] font-bold tracking-[-0.02em]">CI/CD</h1>
-        {collectedAt && isGitlabConnected && (
+        {collectedAt && (
           <p className="mt-1 text-[13px] text-muted">마지막 수집 {formatClock(collectedAt)}</p>
         )}
       </div>
@@ -46,7 +46,6 @@ function CicdContent({ projectId }: { projectId: number }) {
           isLoading={latestDeployment.isLoading}
           error={latestDeployment.error}
           onRetry={latestDeployment.reload}
-          isConnected={isGitlabConnected}
         />
 
         <IntegrationPanel
@@ -61,16 +60,6 @@ function CicdContent({ projectId }: { projectId: number }) {
               github.reload()
             },
           }}
-          gitlab={{
-            value: gitlab.data === null ? null : gitlab.data?.projectPath,
-            isLoading: gitlab.isLoading,
-            error: gitlab.error,
-            onRetry: gitlab.reload,
-            onConnect: async (projectPath) => {
-              await connectGitlab(projectId, { projectPath })
-              gitlab.reload()
-            },
-          }}
         />
       </div>
 
@@ -79,35 +68,33 @@ function CicdContent({ projectId }: { projectId: number }) {
         isLoading={latestPipeline.isLoading}
         error={latestPipeline.error}
         onRetry={latestPipeline.reload}
-        isConnected={isGitlabConnected}
+        isConnected={!isRepositoryMissing}
       />
 
-      {isGitlabConnected && (
-        <>
-          <PipelineTable
-            rows={pipelines.data?.pipelines}
-            isLoading={pipelines.isLoading}
-            error={pipelines.error}
-            onRetry={pipelines.reload}
-            page={pipelinePage}
-            pageSize={CICD_PAGE_SIZE}
-            totalCount={pipelines.data?.totalCount}
-            onPageChange={setPipelinePage}
-            className="mb-5"
-          />
-
-          <DeploymentTable
-            rows={deployments.data?.deployments}
-            isLoading={deployments.isLoading}
-            error={deployments.error}
-            onRetry={deployments.reload}
-            page={deploymentPage}
-            pageSize={CICD_PAGE_SIZE}
-            totalCount={deployments.data?.totalCount}
-            onPageChange={setDeploymentPage}
-          />
-        </>
+      {!isRepositoryMissing && (
+        <PipelineTable
+          rows={pipelines.data?.pipelines}
+          isLoading={pipelines.isLoading}
+          error={pipelines.error}
+          onRetry={pipelines.reload}
+          page={pipelinePage}
+          pageSize={CICD_PAGE_SIZE}
+          totalCount={pipelines.data?.totalCount}
+          onPageChange={setPipelinePage}
+          className="mb-5"
+        />
       )}
+
+      <DeploymentTable
+        rows={deployments.data?.deployments}
+        isLoading={deployments.isLoading}
+        error={deployments.error}
+        onRetry={deployments.reload}
+        page={deploymentPage}
+        pageSize={CICD_PAGE_SIZE}
+        totalCount={deployments.data?.totalCount}
+        onPageChange={setDeploymentPage}
+      />
     </>
   )
 }

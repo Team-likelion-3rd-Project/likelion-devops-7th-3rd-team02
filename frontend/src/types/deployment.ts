@@ -10,7 +10,7 @@ export interface Deployment {
   revision: number
   imageTag: string
   commitSha: string
-  // GitLab 커밋 조회로 채운다. 못 가져오면 null (Backend 확정)
+  // CI가 배포 기록(D3)에 담아 보낸다. 없으면 null (Backend 확정)
   commitMessage?: string | null
   environment: string
   status: DeploymentStatus

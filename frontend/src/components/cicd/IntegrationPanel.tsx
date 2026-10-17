@@ -115,16 +115,8 @@ type RowInput = Omit<
   'provider' | 'connectedLabel' | 'emptyMessage' | 'placeholder' | 'canConnect'
 >
 
-// 설계서 4.7 저장소 연결: GitHub 연결됨, GitLab 매핑됨 (변경 버튼, 기본 브랜치 없음)
-function IntegrationPanel({
-  github,
-  gitlab,
-  canConnect,
-}: {
-  github: RowInput
-  gitlab: RowInput
-  canConnect: boolean
-}) {
+// 설계서 4.7 저장소 연결: GitHub 저장소 (파이프라인 C1의 출처)
+function IntegrationPanel({ github, canConnect }: { github: RowInput; canConnect: boolean }) {
   return (
     <Panel title="저장소 연결">
       <div className="flex flex-col gap-3.5 px-[18px] py-4">
@@ -135,14 +127,6 @@ function IntegrationPanel({
           placeholder="https://github.com/owner/repo"
           canConnect={canConnect}
           {...github}
-        />
-        <IntegrationRow
-          provider="GitLab"
-          connectedLabel="매핑됨"
-          emptyMessage="프로젝트가 연결되어 있지 않아요."
-          placeholder="group/project"
-          canConnect={canConnect}
-          {...gitlab}
         />
       </div>
     </Panel>

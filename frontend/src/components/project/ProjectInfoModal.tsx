@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import KeyValueList from '../common/KeyValueList'
 import Modal from '../common/Modal'
 import { buttonClass, focusRing, textLinkClass } from '../common/styles'
-import { getGithubRepository, getGitlabIntegration } from '../../api/integrationApi'
+import { getGithubRepository } from '../../api/integrationApi'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { useProjectMembers } from '../../hooks/useProjectMembers'
 import { formatDate } from '../../utils/date'
@@ -32,11 +32,6 @@ function ProjectInfoModal({
   const github = useAsyncData(
     () => getGithubRepository(project.id).then((response) => response.data.data ?? null),
     `project-info-github-${project.id}`,
-    '확인할 수 없어요',
-  )
-  const gitlab = useAsyncData(
-    () => getGitlabIntegration(project.id).then((response) => response.data.data ?? null),
-    `project-info-gitlab-${project.id}`,
     '확인할 수 없어요',
   )
 
@@ -107,14 +102,6 @@ function ProjectInfoModal({
                 <ExternalLink aria-hidden="true" size={13} className="flex-none" />
                 <span className="sr-only">(새 탭에서 열림)</span>
               </a>
-            )),
-          },
-          {
-            label: 'GitLab',
-            value: repositoryValue(gitlab, (integration) => (
-              <span className="block truncate font-mono text-[12.5px]" title={integration.projectPath}>
-                {integration.projectPath}
-              </span>
             )),
           },
         ]}

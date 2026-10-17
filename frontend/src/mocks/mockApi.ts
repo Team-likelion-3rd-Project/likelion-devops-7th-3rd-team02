@@ -4,9 +4,8 @@ import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { fetchMockDeploymentPage, fetchMockPipelines } from './cicd'
 import { fetchMockIncidents } from './dashboard'
 import { fetchMockK8sDeployments, fetchMockK8sPods, fetchMockMonitoringSummary } from './monitoring'
-import type { GithubIssue } from '../types/github'
 import type { Incident } from '../types/incident'
-import type { GithubRepository, GitlabIntegration } from '../types/integration'
+import type { GithubRepository } from '../types/integration'
 import type { ProjectMember } from '../types/member'
 import type { MonitoringRange } from '../types/monitoring'
 import type { ProjectListItem, ProjectRole } from '../types/project'
@@ -52,13 +51,6 @@ const memberships: { projectId: number; userId: number; role: ProjectRole }[] = 
   { projectId: 2, userId: 1, role: 'OWNER' },
 ]
 
-const issueLink = (number: number) => ({ number, url: `https://github.com/team02/devflow/issues/${number}` })
-const prLink = (number: number, status: 'OPEN' | 'IN_REVIEW' | 'MERGED') => ({
-  number,
-  status,
-  url: `https://github.com/team02/devflow/pull/${number}`,
-})
-
 const task = (
   id: number,
   projectId: number,
@@ -81,19 +73,17 @@ const task = (
 })
 
 const tasks: Task[] = [
-  task(51, 1, '프로젝트 생성 시 저장소 연결', 'TODO', 1, 40, { issue: issueLink(51), pullRequest: null }),
-  task(53, 1, '배포 이력 페이지네이션', 'TODO', 1, 90, { issue: issueLink(53), pullRequest: null }),
-  task(55, 1, '모니터링 추이 차트', 'TODO', 3, 130, { issue: issueLink(55), pullRequest: null }),
-  task(47, 1, '작업 목록 검색과 필터', 'IN_PROGRESS', 1, 20, { issue: issueLink(47), pullRequest: prLink(61, 'IN_REVIEW') }),
-  task(49, 1, 'K8s 파드 상태 API 연동', 'IN_PROGRESS', 2, 60, { issue: issueLink(49), pullRequest: prLink(60, 'OPEN') }),
-  task(52, 1, '장애 확인과 담당자 지정', 'IN_PROGRESS', 3, 75, { issue: issueLink(52), pullRequest: null }),
+  task(51, 1, '프로젝트 생성 시 저장소 연결', 'TODO', 1, 40),
+  task(53, 1, '배포 이력 페이지네이션', 'TODO', 1, 90),
+  task(55, 1, '모니터링 추이 차트', 'TODO', 3, 130),
+  task(47, 1, '작업 목록 검색과 필터', 'IN_PROGRESS', 1, 20),
+  task(49, 1, 'K8s 파드 상태 API 연동', 'IN_PROGRESS', 2, 60),
+  task(52, 1, '장애 확인과 담당자 지정', 'IN_PROGRESS', 3, 75),
   task(42, 1, '로그인 세션 만료 처리', 'DONE', 1, 10, {
     description: '토큰이 만료되면 로그인 화면으로 보내고, 만료 안내를 한 번만 보여줍니다.',
-    issue: issueLink(42),
-    pullRequest: prLink(58, 'MERGED'),
   }),
-  task(44, 1, '파이프라인 단계 표시', 'DONE', 2, 200, { issue: issueLink(44), pullRequest: prLink(57, 'MERGED') }),
-  task(40, 1, 'GitHub 로그인', 'DONE', 3, 400, { issue: issueLink(40), pullRequest: prLink(55, 'MERGED') }),
+  task(44, 1, '파이프라인 단계 표시', 'DONE', 2, 200),
+  task(40, 1, 'GitHub 로그인', 'DONE', 3, 400),
   task(60, 1, '팀 회의록 정리', 'TODO', null, 300),
   task(61, 2, '기존 문서 목록 추출', 'IN_PROGRESS', 1, 50),
 ]
@@ -101,21 +91,11 @@ const tasks: Task[] = [
 let nextTaskId = 100
 let nextProjectId = 10
 
-const githubIssues: Record<number, { id: number; number: number; title: string }[]> = {
-  1: [
-    { id: 1, number: 51, title: '프로젝트 생성 시 저장소 연결' },
-    { id: 2, number: 56, title: '장애 알림 Slack 연동 검토' },
-    { id: 3, number: 57, title: '배포 상세 화면 링크' },
-    { id: 4, number: 55, title: '모니터링 추이 차트' },
-  ],
-}
-
 const githubRepos: Record<number, GithubRepository | null> = {
   1: { fullName: 'team02/devflow', url: 'https://github.com/team02/devflow' },
 }
-const gitlabIntegrations: Record<number, GitlabIntegration | null> = {
-  1: { projectPath: 'devflow/backend' },
-}
+// 배포 기록(D3 Webhook)을 받은 프로젝트
+const deployedProjectIds = new Set([1])
 
 const incidentsByProject: Record<number, Incident[]> = {}
 
@@ -271,27 +251,6 @@ const routes: [string, string, Handler][] = [
     return found
   }],
 
-  // GitHub 이슈
-  ['get', '/projects/:projectId/github/issues', ({ params }): GithubIssue[] =>
-    (githubIssues[params.projectId] ?? []).map((issue) => ({
-      ...issue,
-      url: `https://github.com/team02/devflow/issues/${issue.number}`,
-      imported: tasks.some((item) => item.projectId === params.projectId && item.issue?.number === issue.number),
-    }))],
-  ['post', '/projects/:projectId/github/issues/:issueId/tasks', ({ params }) => {
-    const issue = (githubIssues[params.projectId] ?? []).find((item) => item.id === params.issueId)
-    if (!issue) throw new MockHttpError(404, '이슈를 찾을 수 없습니다.', 'ISSUE_NOT_FOUND')
-    if (tasks.some((item) => item.projectId === params.projectId && item.issue?.number === issue.number)) {
-      throw new MockHttpError(409, '이미 업무로 가져온 이슈입니다.', 'DUPLICATE_ISSUE')
-    }
-    const created = task(nextTaskId++, params.projectId, issue.title, 'TODO', null, 0, {
-      issue: issueLink(issue.number),
-      pullRequest: null,
-    })
-    tasks.push(created)
-    return created
-  }],
-
   // 저장소 연결
   ['get', '/projects/:projectId/github/repository', ({ params }) => githubRepos[params.projectId] ?? null],
   ['post', '/projects/:projectId/integrations/github', ({ params, body }) => {
@@ -300,22 +259,13 @@ const routes: [string, string, Handler][] = [
     githubRepos[params.projectId] = { fullName: match[1], url: String(body.repositoryUrl) }
     return githubRepos[params.projectId]
   }],
-  ['get', '/projects/:projectId/integrations/gitlab', ({ params }) => gitlabIntegrations[params.projectId] ?? null],
-  ['post', '/projects/:projectId/integrations/gitlab', ({ params, body }) => {
-    if (!/^[\w.-]+(\/[\w.-]+)+$/.test(String(body.projectPath))) {
-      throw new MockHttpError(400, 'GitLab 프로젝트 경로 형식이 올바르지 않습니다.', 'INVALID_GITLAB_PATH')
-    }
-    gitlabIntegrations[params.projectId] = { projectPath: String(body.projectPath) }
-    return gitlabIntegrations[params.projectId]
-  }],
-
-  // CI/CD (GitLab이 연결된 프로젝트만 데이터가 있다)
+  // CI/CD: 파이프라인은 GitHub 저장소가 연결된 프로젝트만, 배포는 배포 기록을 받은 프로젝트만 데이터가 있다
   ['get', '/projects/:projectId/cicd/pipelines', ({ params, query }) =>
-    gitlabIntegrations[params.projectId]
+    githubRepos[params.projectId]
       ? fetchMockPipelines({ page: Number(query.page ?? 0), size: Number(query.size ?? 10) })
       : { pipelines: [], collectedAt: now(), totalCount: 0 }],
   ['get', '/projects/:projectId/deployments', ({ params, query }) =>
-    gitlabIntegrations[params.projectId]
+    deployedProjectIds.has(params.projectId)
       ? fetchMockDeploymentPage({ page: Number(query.page ?? 0), size: Number(query.size ?? 10) })
       : { deployments: [], collectedAt: now(), totalCount: 0 }],
 

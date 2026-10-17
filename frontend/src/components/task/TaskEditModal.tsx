@@ -10,7 +10,6 @@ import type { ProjectMember } from '../../types/member'
 import type { Task, TaskStatus } from '../../types/task'
 
 // 설계서 4.6, 9.4: 제목·내용 수정 + 상태·담당자 변경. 바뀐 항목만 해당 API를 호출한다.
-// 이슈에서 가져온 업무의 이슈·PR 연결 정보는 수정하지 않는다.
 function TaskEditModal({
   projectId,
   task,
