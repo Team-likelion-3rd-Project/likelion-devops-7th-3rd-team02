@@ -37,6 +37,8 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful
+  # Nginx·Ingress 뒤에서 원래 주소(https, 도메인)를 알 수 있도록 X-Forwarded-* 반영 (소셜 로그인 콜백 주소 확인에 필요)
+  forward-headers-strategy: framework
 
 springdoc:
   swagger-ui:
@@ -119,3 +121,18 @@ devflow:
         label: AWS
         prometheus-url: ${PROMETHEUS_URL_PRODUCTION:}
         namespace: ${K8S_NAMESPACE:devflow}
+
+  # 소셜 로그인 (X1~X3). client-id·secret이 비어 있는 제공자는 비활성(버튼을 누르면 error=oauth_failed)
+  # 콜백 주소: {FRONTEND_BASE_URL}/login/oauth2/code/{github|google} 를 각 OAuth App에 등록
+  oauth:
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
+    github:
+      client-id: ${GITHUB_OAUTH_CLIENT_ID:}
+      client-secret: ${GITHUB_OAUTH_CLIENT_SECRET:}
+      authorization-uri: ${GITHUB_OAUTH_AUTHORIZATION_URI:}
+      token-uri: ${GITHUB_OAUTH_TOKEN_URI:}
+      user-info-uri: ${GITHUB_OAUTH_USER_INFO_URI:}
+      emails-uri: ${GITHUB_OAUTH_EMAILS_URI:}
+    google:
+      client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+      client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:}

@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/oauth/github/user/emails",
+    "headers": {
+      "Authorization": {
+        "equalTo": "Bearer gho_unverified"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": [
+      {
+        "email": "nomail@devflow.dev",
+        "primary": true,
+        "verified": false
+      }
+    ]
+  }
+}

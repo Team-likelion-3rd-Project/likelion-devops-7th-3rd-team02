@@ -49,6 +49,12 @@ services:
       PROMETHEUS_URL: ${PROMETHEUS_URL:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       CACHE_TYPE: ${CACHE_TYPE:-memory}
+      # 소셜 로그인 (선택). 콜백 주소 http://localhost:3000/login/oauth2/code/{github|google}
+      FRONTEND_BASE_URL: http://localhost:3000
+      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
+      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       TZ: Asia/Seoul
     ports:
       - "8080:8080"
