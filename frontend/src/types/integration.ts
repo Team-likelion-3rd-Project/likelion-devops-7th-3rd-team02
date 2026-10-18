@@ -1,22 +1,13 @@
-// 설계서 6.5, 6.6 저장소 연결. 필드명은 Backend 확정 전 가정이다.
-// 접근 토큰 입력 여부는 Backend 답변 대기 (10.2)라 요청에 넣지 않는다.
+// 설계서 6.5 GitHub 저장소 연결 (Backend 확정 G1·G2). 토큰은 받지 않고 서버 공용 토큰을 쓴다.
+// GitLab 연동과 GitHub 이슈·PR 연동은 3차 범위에서 제외했다 (Backend 2026-10-14~15 결정).
 
-// GET /projects/{projectId}/github/repository (계획)
+// GET /projects/{projectId}/github/repository — 연결 전에는 data: null
 export interface GithubRepository {
   fullName: string
   url: string
 }
 
-// POST /projects/{projectId}/integrations/github (계획)
+// POST /projects/{projectId}/integrations/github (OWNER)
 export interface GithubConnectRequest {
   repositoryUrl: string
-}
-
-// GET·POST /projects/{projectId}/integrations/gitlab (확정)
-export interface GitlabIntegration {
-  projectPath: string
-}
-
-export interface GitlabConnectRequest {
-  projectPath: string
 }

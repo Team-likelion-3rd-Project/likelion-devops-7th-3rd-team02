@@ -1,5 +1,4 @@
 import type { Deployment, DeploymentListResponse, PageParams } from '../types/deployment'
-import type { GithubRepository, GitlabIntegration } from '../types/integration'
 import type { Pipeline, PipelineListResponse, PipelineStage } from '../types/pipeline'
 
 // 목 모드(mocks/mockApi.ts)가 쓰는 임시 데이터. Backend 구현 후 목 모드가 필요 없으면 지운다.
@@ -101,12 +100,3 @@ export const fetchMockDeploymentPage = (params?: PageParams) =>
     collectedAt: new Date().toISOString(),
     totalCount: DEPLOYMENTS.length,
   })
-
-export const fetchMockGithubRepository = () =>
-  mockDelay<GithubRepository | null>({
-    fullName: 'team02/devflow',
-    url: 'https://github.com/team02/devflow',
-  })
-
-export const fetchMockGitlabIntegration = () =>
-  mockDelay<GitlabIntegration | null>({ projectPath: 'devflow/backend' })

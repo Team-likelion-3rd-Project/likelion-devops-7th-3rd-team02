@@ -25,6 +25,10 @@ const navItemClass = ({ isActive }: { isActive: boolean }) =>
       : 'font-medium text-muted hover:bg-hover',
   ].join(' ')
 
+// 위쪽 구분선은 메뉴 바깥 여백에 그린다 (활성 배경과 겹치지 않게).
+const dividedClass =
+  'relative mt-[13px] before:absolute before:-top-[7px] before:right-0 before:left-0 before:h-px before:bg-line2'
+
 // 설계서 4.1 공통 Layout: 로고(대시보드)와 프로젝트 전환, 팀원 박스, 이동 메뉴, 사용자와 로그아웃
 function Sidebar() {
   const navigate = useNavigate()
@@ -42,6 +46,8 @@ function Sidebar() {
     { label: '작업 보드', path: 'tasks' },
     { label: 'CI/CD', path: 'cicd' },
     { label: '모니터링', path: 'monitoring' },
+    // 가끔 들어오는 연결 설정이라 매일 보는 메뉴와 줄로 나눈다.
+    { label: '설정', path: 'settings', divided: true },
   ]
 
   const handleLogout = () => {
@@ -119,7 +125,7 @@ function Sidebar() {
             <NavLink
               key={menu.path}
               to={`/projects/${projectId}/${menu.path}`}
-              className={navItemClass}
+              className={(state) => `${navItemClass(state)} ${menu.divided ? dividedClass : ''}`}
             >
               {menu.label}
             </NavLink>
@@ -127,7 +133,7 @@ function Sidebar() {
             <span
               key={menu.path}
               aria-disabled="true"
-              className="cursor-not-allowed rounded-lg px-3 py-[9px] font-medium text-muted opacity-45"
+              className={`cursor-not-allowed rounded-lg px-3 py-[9px] font-medium text-muted opacity-45 ${menu.divided ? dividedClass : ''}`}
             >
               {menu.label}
             </span>

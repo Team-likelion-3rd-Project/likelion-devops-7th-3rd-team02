@@ -7,8 +7,6 @@ import { buttonClass, focusRing } from '../common/styles'
 import { TASK_STATUS } from '../../utils/status'
 import type { Task } from '../../types/task'
 
-const linkClass = `font-mono text-[12.5px] text-accent hover:underline ${focusRing}`
-
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex justify-between gap-3">
@@ -18,8 +16,8 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
   )
 }
 
-// 설계서 4.5 오른쪽 상세 패널: 제목, 상태, 설명, 담당자, GitHub 이슈, PR 링크, 수정 버튼
-// 삭제 버튼과 상태 변경 이력은 표시하지 않는다. 닫기(X), Esc, 같은 카드 다시 선택으로 닫는다.
+// 설계서 4.5 오른쪽 상세 패널: 제목, 상태, 설명, 담당자, 수정 버튼
+// 삭제는 수정 모달에서 한다. 상태 변경 이력은 표시하지 않는다. 닫기(X), Esc, 같은 카드 다시 선택으로 닫는다.
 function TaskDetailPanel({
   task,
   onEdit,
@@ -56,27 +54,6 @@ function TaskDetailPanel({
 
         <div className="flex flex-col gap-2">
           <DetailRow label="담당자">{task.assigneeName ?? '담당자 없음'}</DetailRow>
-
-          {task.issue && (
-            <DetailRow label="GitHub 이슈">
-              <a href={task.issue.url} target="_blank" rel="noreferrer" className={linkClass}>
-                #{task.issue.number}
-              </a>
-            </DetailRow>
-          )}
-
-          {task.pullRequest && (
-            <DetailRow label="Pull Request">
-              <a
-                href={task.pullRequest.url}
-                target="_blank"
-                rel="noreferrer"
-                className={linkClass}
-              >
-                #{task.pullRequest.number} GitHub에서 보기
-              </a>
-            </DetailRow>
-          )}
         </div>
 
         <button type="button" onClick={onEdit} className={`${buttonClass} w-full`}>

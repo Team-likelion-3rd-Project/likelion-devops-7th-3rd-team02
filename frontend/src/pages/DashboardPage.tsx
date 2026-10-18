@@ -11,6 +11,7 @@ import { primaryButtonClass, textLinkClass } from '../components/common/styles'
 import { useDashboardData } from '../hooks/useDashboardData'
 import { useProjectContext } from '../hooks/useProjectContext'
 import { formatClock } from '../utils/date'
+import { isProjectOwner } from '../utils/projectRole'
 
 // 설계서 4.4 대시보드: 사이드바에서 고른 프로젝트 하나의 홈 (프로젝트 고르기·만들기는 사이드바 전환 드롭다운)
 function DashboardPage() {
@@ -78,7 +79,12 @@ function DashboardPage() {
         <AlertBanner incidents={incidents.data} projectId={projectId} />
       )}
 
-      <EnvironmentSummary />
+      {projectId !== null && (
+        <EnvironmentSummary
+          projectId={projectId}
+          canConnect={isProjectOwner(currentProject, currentUser?.userId)}
+        />
+      )}
 
       {projectId !== null && (
         <div className="mb-5 grid grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] gap-5 max-[1100px]:grid-cols-1">
