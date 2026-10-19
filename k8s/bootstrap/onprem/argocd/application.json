@@ -1,0 +1,25 @@
+{
+  "apiVersion": "argoproj.io/v1alpha1",
+  "kind": "Application",
+  "metadata": {
+    "name": "devflow-onprem",
+    "namespace": "argocd"
+  },
+  "spec": {
+    "destination": {
+      "namespace": "devflow",
+      "server": "https://kubernetes.default.svc"
+    },
+    "project": "devflow-onprem",
+    "source": {
+      "path": "k8s/overlays/onprem",
+      "repoURL": "https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02.git",
+      "targetRevision": "0e6f7e9884f18d28d8a54f8fd0d642b95743de49"
+    },
+    "syncPolicy": {
+      "syncOptions": [
+        "FailOnSharedResource=true"
+      ]
+    }
+  }
+}

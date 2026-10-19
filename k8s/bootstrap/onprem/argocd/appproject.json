@@ -1,0 +1,35 @@
+{
+  "apiVersion": "argoproj.io/v1alpha1",
+  "kind": "AppProject",
+  "metadata": {
+    "name": "devflow-onprem",
+    "namespace": "argocd"
+  },
+  "spec": {
+    "clusterResourceWhitelist": [],
+    "description": "DevFlow on-premises application",
+    "destinations": [
+      {
+        "namespace": "devflow",
+        "server": "https://kubernetes.default.svc"
+      }
+    ],
+    "namespaceResourceWhitelist": [
+      {
+        "group": "apps",
+        "kind": "Deployment"
+      },
+      {
+        "group": "",
+        "kind": "Service"
+      },
+      {
+        "group": "networking.k8s.io",
+        "kind": "Ingress"
+      }
+    ],
+    "sourceRepos": [
+      "https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02.git"
+    ]
+  }
+}
