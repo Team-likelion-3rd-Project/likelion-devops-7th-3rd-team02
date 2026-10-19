@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: devflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: onprem-worker-02
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: frontend
+          image: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02-frontend:sha-87b04f86f465ea949fda5fa5e06b77275ff570a2
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: devflow
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
