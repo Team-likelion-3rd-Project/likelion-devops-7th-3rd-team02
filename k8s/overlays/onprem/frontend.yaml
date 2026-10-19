@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
@@ -10,6 +10,8 @@ spec:
       app: frontend
   template:
     metadata:
+      annotations:
+        devflow.onprem.test/rollout-check: "20261019-01"
       labels:
         app: frontend
     spec:
