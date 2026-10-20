@@ -1,4 +1,4 @@
-# DevFlow 2차 프로젝트 - Kubernetes 리소스 목록
+# DevFlow 3차 프로젝트 - Kubernetes 리소스 목록
 
 ## Namespace
 
