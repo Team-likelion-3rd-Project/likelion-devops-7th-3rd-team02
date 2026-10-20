@@ -1,0 +1,60 @@
+applicationSet:
+  replicas: 0
+controller:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 384Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+dex:
+  enabled: false
+global:
+  nodeSelector:
+    kubernetes.io/hostname: onprem-worker-02
+    kubernetes.io/os: linux
+notifications:
+  enabled: false
+redis:
+  enabled: true
+  resources:
+    limits:
+      cpu: 200m
+      memory: 96Mi
+    requests:
+      cpu: 25m
+      memory: 32Mi
+redis-ha:
+  enabled: false
+redisSecretInit:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 25m
+      memory: 32Mi
+repoServer:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+server:
+  ingress:
+    enabled: false
+  replicas: 1
+  resources:
+    limits:
+      cpu: 300m
+      memory: 192Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  service:
+    type: ClusterIP
