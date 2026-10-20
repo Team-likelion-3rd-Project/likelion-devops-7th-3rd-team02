@@ -97,4 +97,18 @@ class RedisExternalCacheTest {
         assertThat(cache.bypassing()).isFalse();
         verify(ops, times(2)).get(anyString());
     }
+
+    @Test
+    void 동시_요청이_함께_실패해도_우회_전환은_한_번만_한다() {
+        RedisConnectionFailureException down = new RedisConnectionFailureException("down");
+
+        assertThat(cache.failed("get", down)).isTrue();
+        // 장애 순간 이미 Redis를 기다리던 다른 요청들의 실패
+        assertThat(cache.failed("put", down)).isFalse();
+        assertThat(cache.failed("get", down)).isFalse();
+
+        // 우회 시간이 지난 뒤 다시 실패하면 새로 전환
+        clock.advance(RedisExternalCache.BYPASS.plusSeconds(1));
+        assertThat(cache.failed("get", down)).isTrue();
+    }
 }
