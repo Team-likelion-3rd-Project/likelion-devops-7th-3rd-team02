@@ -7,6 +7,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
@@ -16,6 +17,7 @@ import java.util.function.Supplier;
  * <p>Redis가 응답하지 않으면 명령마다 타임아웃(0.5초)을 기다리게 되어, 캐시를 여러 번 쓰는 API
  * (모니터링 요약은 약 20회)가 10초 이상 걸린다(10/20 온프렘 검증). 그래서 한 번 실패하면
  * {@link #BYPASS} 동안 Redis를 건너뛰고 Pod 메모리 캐시를 대신 쓴 뒤, 시간이 지나면 다시 시도한다.
+ * 장애 순간 이미 Redis를 기다리던 동시 요청들도 실패하지만, 우회 전환·로그는 한 번만 한다.
  */
 @Slf4j
 public class RedisExternalCache implements ExternalCache {
@@ -28,7 +30,7 @@ public class RedisExternalCache implements ExternalCache {
     private final Clock clock;
 
     /** 이 시각 전까지는 Redis를 호출하지 않는다 (null이면 정상) */
-    private volatile Instant bypassUntil;
+    private final AtomicReference<Instant> bypassUntil = new AtomicReference<>();
 
     public RedisExternalCache(StringRedisTemplate redis, Clock clock) {
         this.redis = redis;
@@ -81,18 +83,26 @@ public class RedisExternalCache implements ExternalCache {
     }
 
     boolean bypassing() {
-        Instant until = bypassUntil;
+        Instant until = bypassUntil.get();
         return until != null && clock.instant().isBefore(until);
     }
 
-    private void failed(String operation, RuntimeException e) {
-        bypassUntil = clock.instant().plus(BYPASS);
+    /** 우회를 새로 시작했으면 true. 이미 우회 중이면(동시 요청의 실패) 아무것도 하지 않는다 */
+    boolean failed(String operation, RuntimeException e) {
+        Instant now = clock.instant();
+        Instant current = bypassUntil.get();
+        if (current != null && now.isBefore(current)) {
+            return false;
+        }
+        if (!bypassUntil.compareAndSet(current, now.plus(BYPASS))) {
+            return false;
+        }
         log.warn("redis cache {} failed, using memory cache for {}s: {}", operation, BYPASS.toSeconds(), e.getMessage());
+        return true;
     }
 
     private void recovered() {
-        if (bypassUntil != null) {
-            bypassUntil = null;
+        if (bypassUntil.get() != null && bypassUntil.getAndSet(null) != null) {
             log.info("redis cache recovered");
         }
     }
