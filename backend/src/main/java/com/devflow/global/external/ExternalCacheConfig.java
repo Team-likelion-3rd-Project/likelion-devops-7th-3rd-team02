@@ -19,7 +19,7 @@ public class ExternalCacheConfig {
             Clock clock
     ) {
         if ("redis".equalsIgnoreCase(type)) {
-            return new RedisExternalCache(redisTemplate.getObject());
+            return new RedisExternalCache(redisTemplate.getObject(), clock);
         }
         return new MemoryExternalCache(clock);
     }
