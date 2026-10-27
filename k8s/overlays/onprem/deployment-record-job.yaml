@@ -1,0 +1,87 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: devflow-backend-deployment-record
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        app: devflow-deployment-record
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: record
+          image: curlimages/curl@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          env:
+            - name: DEPLOY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: devflow-project-webhooks
+                  key: deployment-token
+            - name: RELEASE_COMMIT_SHA
+              value: "91febe18e3164459dd48f0acbc81bef582a263fe"
+            - name: RELEASE_IMAGE_DIGEST
+              value: "sha256:f5106c40336be51fbe74b8bfc5240fbefd0c967113fd70c386d014d17c73934e"
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              umask 077
+              test -n "$DEPLOY_TOKEN"
+              printf '%s' "$RELEASE_COMMIT_SHA" |
+                grep -Eq '^[0-9a-f]{40}$'
+              printf '%s' "$RELEASE_IMAGE_DIGEST" |
+                grep -Eq '^sha256:[0-9a-f]{64}$'
+
+              curl --fail --silent --show-error \
+                --connect-timeout 5 --max-time 20 \
+                http://backend.devflow.svc.cluster.local:8080/actuator/health/readiness \
+                > /tmp/readiness.json
+              grep -Eq '"status"[[:space:]]*:[[:space:]]*"UP"' /tmp/readiness.json
+
+              printf '{"environment":"dev","service":"backend","commitSha":"%s","commitMessage":"Argo CD PostSync: validated release metadata","imageTag":"%s","imageDigest":"%s","status":"SUCCESS"}' \
+                "$RELEASE_COMMIT_SHA" "$RELEASE_IMAGE_DIGEST" \
+                "$RELEASE_IMAGE_DIGEST" > /tmp/deployment.json
+
+              printf 'header = "Authorization: Bearer %s"\n' "$DEPLOY_TOKEN" |
+                curl --config - \
+                  --fail --silent --show-error \
+                  --connect-timeout 5 --max-time 30 \
+                  --header 'Content-Type: application/json' \
+                  --data-binary @/tmp/deployment.json \
+                  http://backend.devflow.svc.cluster.local:8080/api/webhooks/deployments \
+                  > /tmp/response.json
+
+              grep -Eq '"success"[[:space:]]*:[[:space:]]*true' /tmp/response.json
+              printf '배포 기록 전송 완료\n'
+              cat /tmp/response.json
+          volumeMounts:
+            - name: temporary
+              mountPath: /tmp
+      volumes:
+        - name: temporary
+          emptyDir: {}
