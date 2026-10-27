@@ -457,6 +457,16 @@ jobs:
           body='{"environment":"dev","service":"backend","commitSha":"9a8b7c6","imageTag":"9a8b7c6","status":"SUCCESS","pipelineId":201}'
           # 프로젝트 토큰이면 projectId 생략 가능
           curl -fsS -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" -d "$body" | jq -e '.data.imageTag == "9a8b7c6"'
+          # pipelineId 없는 기록: 같은 릴리스를 다시 보내면(Argo CD 재동기화) 새로 만들지 않음, 커밋이 바뀌면 새 기록
+          dep=$base/deployments
+          before=$(curl -fsS "$dep?size=1" -H "$auth" | jq '.data.totalCount')
+          nopl='{"environment":"dev","service":"frontend","commitSha":"abc1234","imageTag":"abc1234","imageDigest":"sha256:f1","status":"SUCCESS"}'
+          id1=$(curl -fsS -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" -d "$nopl" | jq -r '.data.id')
+          id2=$(curl -fsS -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" -d "$nopl" | jq -r '.data.id')
+          test "$id1" = "$id2"
+          curl -fsS -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" \
+            -d "$(echo "$nopl" | jq -c '.commitSha = "def5678" | .imageDigest = "sha256:f2"')" | jq -e --argjson a "$id1" '.data.id != $a'
+          curl -fsS "$dep?size=1" -H "$auth" | jq -e --argjson b "$before" '.data.totalCount == ($b + 2)'
           # 토큰의 프로젝트와 다른 projectId → 403
           status=$(curl -s -o /dev/null -w '%{http_code}' -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" \
             -d "$(echo "$body" | jq -c --argjson p "$EMPTY_PROJECT_ID" '.projectId = $p')")
