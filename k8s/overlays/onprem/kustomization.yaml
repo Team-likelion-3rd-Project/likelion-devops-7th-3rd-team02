@@ -5,6 +5,7 @@ resources:
   - frontend.yaml
   - backend.yaml
   - ingress.yaml
+  - deployment-record-job.yaml
 images:
   - name: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02-frontend
     digest: sha256:1c20444ca44a6c5518c5487ea77fc85da88aec2d10052787a469ebd8fd82ed57

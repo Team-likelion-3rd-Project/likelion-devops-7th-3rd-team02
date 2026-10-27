@@ -16,6 +16,10 @@
     ],
     "namespaceResourceWhitelist": [
       {
+        "group": "batch",
+        "kind": "Job"
+      },
+      {
         "group": "apps",
         "kind": "Deployment"
       },
