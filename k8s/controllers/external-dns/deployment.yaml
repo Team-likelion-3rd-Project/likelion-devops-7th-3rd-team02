@@ -45,7 +45,7 @@ spec:
             - --registry=txt
             - --txt-owner-id=devflow-dev-eks
             - --domain-filter=manoit.co.kr
-            - --exclude-domains=team02-gitlab.manoit.co.kr
+            - --exclude-domains=team02-gitlab.manoit.co.kr,team02-app.manoit.co.kr
             - --aws-zone-type=public
             - --interval=1m
             - --log-level=info

@@ -1,0 +1,41 @@
+# Default values for the devflow chart.
+# Only values that actually change per environment/release are parameterized.
+# Everything else mirrors the original k8s/ manifests 1:1 (Phase 3.1 semantic
+# preservation). Per-environment overrides live in the GitOps repository
+# (devflow-gitops: values/aws-dev.yaml), not here.
+
+global:
+  # Namespace is created/managed outside the chart (existing devflow namespace,
+  # shared with monitoring). Templates reference it explicitly.
+  namespace: devflow
+  # imagePullSecret created manually (k8s/registry/image-pull-secret.example.yaml)
+  imagePullSecretName: gitlab-registry-secret
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: team02-gitlab.manoit.co.kr:5050/root/devflow/frontend
+    # "<IMAGE_TAG>" mirrors the pre-GitOps manifest placeholder so that
+    # `helm template` output equals the original manifests. The GitOps release
+    # commit always overrides this with the real image tag.
+    tag: "<IMAGE_TAG>"
+
+backend:
+  replicaCount: 2
+  image:
+    repository: team02-gitlab.manoit.co.kr:5050/root/devflow/backend
+    tag: "<IMAGE_TAG>"
+  config:
+    dbUrl: "jdbc:postgresql://<RDS_HOST>:5432/deflow_db"
+    springProfile: "dev"
+    serverPort: "8080"
+    jwtExpiration: "3600000"
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+
+ingress:
+  className: alb
+  host: team02-app.manoit.co.kr
+  albOriginHost: ""

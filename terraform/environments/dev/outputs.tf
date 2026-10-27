@@ -174,3 +174,34 @@ output "external_dns_policy_arn" {
   description = "IAM Policy ARN of the ExternalDNS Route53 least-privilege policy (scoped to manoit.co.kr hosted zone)"
   value       = module.external_dns_iam.policy_arn
 }
+
+# --- Phase 3.2: Frontend S3 + CloudFront --------------------------------------
+output "frontend_s3_bucket" {
+  description = "Private frontend static bucket name. CI variable FRONTEND_S3_BUCKET: terraform -chdir=terraform/environments/dev output -raw frontend_s3_bucket"
+  value       = module.frontend_hosting.s3_bucket_id
+}
+
+output "frontend_cloudfront_distribution_id" {
+  description = "CloudFront distribution id. CI variable CLOUDFRONT_DISTRIBUTION_ID: terraform -chdir=terraform/environments/dev output -raw frontend_cloudfront_distribution_id"
+  value       = module.frontend_hosting.cloudfront_distribution_id
+}
+
+output "frontend_cloudfront_domain_name" {
+  description = "CloudFront distribution domain. Pre-cutover smoke-test target (temporary CloudFront domain)."
+  value       = module.frontend_hosting.cloudfront_domain_name
+}
+
+output "frontend_cloudfront_acm_certificate_arn" {
+  description = "us-east-1 ACM certificate ARN used by CloudFront viewer TLS for team02-app.manoit.co.kr"
+  value       = module.frontend_cloudfront_acm.certificate_arn
+}
+
+output "alb_origin_acm_certificate_arn" {
+  description = "ap-northeast-1 ACM certificate ARN for the CloudFront->ALB origin host (team02-app-alb.manoit.co.kr). Discovered automatically by the ALB controller via Ingress tls.hosts."
+  value       = module.alb_origin_acm.certificate_arn
+}
+
+output "alb_origin_hostname" {
+  description = "Dedicated ALB origin hostname used in the Helm value ingress.albOriginHost (GitOps per-env values)."
+  value       = var.alb_origin_hostname
+}
