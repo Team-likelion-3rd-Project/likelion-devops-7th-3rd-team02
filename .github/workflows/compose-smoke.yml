@@ -550,6 +550,11 @@ jobs:
           curl -s -o /dev/null -D g.h "$base/oauth2/authorization/google"
           test "$(loc g.h)" = "http://localhost:3000/oauth/callback?error=oauth_failed"
 
+      - name: k6 smoke (부하 테스트 스크립트 동작 확인)
+        run: |
+          docker run --rm -i --network host -v "$PWD/scripts/k6:/s" grafana/k6:0.54.0 \
+            run -e BASE_URL=http://localhost:3000 -e PROFILE=smoke /s/devflow-load.js
+
       - name: Graceful shutdown
         run: |
           docker compose stop -t 30 backend
