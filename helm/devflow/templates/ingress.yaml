@@ -1,0 +1,97 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devflow-ingress
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app.kubernetes.io/name: devflow-ingress
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+        {{- if .Values.ingress.albOriginHost }}
+        - {{ .Values.ingress.albOriginHost }}
+        {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /actuator/health
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8080
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8080
+          {{- if .Values.ingress.albOriginHost }}
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8080
+          - path: /login/oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8080
+          {{- end }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80
+    {{- if .Values.ingress.albOriginHost }}
+    - host: {{ .Values.ingress.albOriginHost }}
+      http:
+        paths:
+          - path: /actuator/health
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8080
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8080
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8080
+          - path: /login/oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8080
+    {{- end }}

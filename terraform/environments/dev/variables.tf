@@ -96,3 +96,23 @@ variable "application_domain" {
   default     = "team02-app.manoit.co.kr"
 }
 
+# --- Phase 3.2: Frontend S3 + CloudFront -------------------------------------
+
+variable "alb_origin_hostname" {
+  description = "Dedicated hostname that ExternalDNS points at the application ALB, used as the CloudFront backend origin (avoids team02-app -> CloudFront -> team02-app self-reference). Its DNS record comes from the Ingress albOriginHost entry, TLS from alb_origin ACM below."
+  type        = string
+  default     = "team02-app-alb.manoit.co.kr"
+}
+
+variable "frontend_dns_takeover" {
+  description = "Phase 3.2 DNS ownership step 1: Terraform takes over the existing application_domain A/alias record (target stays the ALB). Requires `terraform import` of the live ExternalDNS-managed record first - see docs/migration/phase-3.2-cutover-runbook.md. Keep false until AWS access is approved and ExternalDNS excludes the domain."
+  type        = bool
+  default     = false
+}
+
+variable "frontend_dns_cutover" {
+  description = "Phase 3.2 DNS ownership step 2: switch the taken-over application_domain alias target from the ALB to CloudFront. Rollback = set false again (atomic alias update, no record delete)."
+  type        = bool
+  default     = false
+}
+
