@@ -1,0 +1,109 @@
+name: Deploy Frontend
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-frontend-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Verify branch and deployment settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Require an approved deployment branch
+        run: |
+          case "$GITHUB_REF" in
+            refs/heads/develop|refs/heads/main)
+              echo "dispatched from $GITHUB_REF"
+              ;;
+            *)
+              echo "::error::deploy-frontend may only be dispatched from develop or main (got $GITHUB_REF)"
+              exit 1
+              ;;
+          esac
+
+      - name: Require deployment settings
+        env:
+          ROLE_ARN_PRESENT: ${{ vars.AWS_DEPLOY_ROLE_ARN != '' }}
+          BUCKET_PRESENT: ${{ vars.FRONTEND_S3_BUCKET != '' }}
+          DISTRIBUTION_PRESENT: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID != '' }}
+        run: |
+          missing=0
+          for pair in ROLE_ARN_PRESENT:AWS_DEPLOY_ROLE_ARN BUCKET_PRESENT:FRONTEND_S3_BUCKET DISTRIBUTION_PRESENT:CLOUDFRONT_DISTRIBUTION_ID; do
+            key=${pair%%:*}
+            name=${pair##*:}
+            if [ "${!key}" != "true" ]; then
+              echo "::error::repository/environment variable $name is not set"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+  deploy:
+    name: Build and publish to S3 + CloudFront
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: ./frontend
+        run: npm run lint --if-present
+
+      - name: Build
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+          role-session-name: devflow-frontend-deploy
+
+      - name: Verify assumed identity
+        run: aws sts get-caller-identity
+
+      - name: Sync to S3 and invalidate CloudFront
+        env:
+          FRONTEND_S3_BUCKET: ${{ vars.FRONTEND_S3_BUCKET }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+          AWS_DEFAULT_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+        run: sh ./scripts/deploy-frontend-s3.sh frontend/dist
+
+      - name: Record deployment in summary
+        env:
+          BUCKET: ${{ vars.FRONTEND_S3_BUCKET }}
+          DISTRIBUTION: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          {
+            echo "## Frontend deployment"
+            echo "- bucket: \`s3://$BUCKET\`"
+            echo "- CloudFront distribution: \`$DISTRIBUTION\`"
+            echo "- commit: \`${GITHUB_SHA::8}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

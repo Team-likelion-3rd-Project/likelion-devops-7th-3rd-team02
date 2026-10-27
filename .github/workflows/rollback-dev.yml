@@ -1,0 +1,82 @@
+name: Rollback Dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      gitops_release_commit:
+        description: "GitOps release commit to revert (subject must start with release:)"
+        required: true
+        type: string
+
+concurrency:
+  group: gitops-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Verify branch and target commit input
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Require an approved rollback branch
+        run: |
+          case "$GITHUB_REF" in
+            refs/heads/develop|refs/heads/main)
+              echo "dispatched from $GITHUB_REF"
+              ;;
+            *)
+              echo "::error::rollback-dev may only be dispatched from develop or main (got $GITHUB_REF)"
+              exit 1
+              ;;
+          esac
+
+      - name: Require rollback inputs
+        env:
+          GITOPS_TOKEN_PRESENT: ${{ secrets.GITOPS_TOKEN != '' }}
+          RELEASE_COMMIT: ${{ inputs.gitops_release_commit }}
+        run: |
+          failed=0
+          if [ "$GITOPS_TOKEN_PRESENT" != "true" ]; then
+            echo "::error::GITOPS_TOKEN secret is not available (contents:write on the GitOps repository)"
+            failed=1
+          fi
+          if [ "${#RELEASE_COMMIT}" -lt 7 ]; then
+            echo "::error::gitops_release_commit must be a commit SHA of the GitOps repository (got '${RELEASE_COMMIT}')"
+            failed=1
+          fi
+          exit "$failed"
+
+  rollback:
+    name: Revert GitOps release commit
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: dev
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Revert release commit in the GitOps repository
+        env:
+          GITOPS_REPO_URL: ${{ vars.GITOPS_REPO_URL || 'https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02-gitops.git' }}
+          GITOPS_BRANCH: ${{ vars.GITOPS_BRANCH || 'main' }}
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          GITOPS_RELEASE_COMMIT: ${{ inputs.gitops_release_commit }}
+        run: sh ./scripts/rollback-gitops-release.sh
+
+      - name: Record rollback in summary
+        env:
+          RELEASE_COMMIT: ${{ inputs.gitops_release_commit }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "## GitOps rollback"
+            echo "- reverted release commit: \`$RELEASE_COMMIT\`"
+            echo "- workflow: $RUN_URL"
+          } >> "$GITHUB_STEP_SUMMARY"

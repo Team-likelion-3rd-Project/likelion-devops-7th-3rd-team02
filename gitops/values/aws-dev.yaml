@@ -1,0 +1,29 @@
+global:
+  namespace: devflow
+  imagePullSecretName: ""
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02/frontend
+    tag: "<IMAGE_TAG>"
+
+backend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02/backend
+    tag: "<IMAGE_TAG>"
+  config:
+    dbUrl: "jdbc:postgresql://<RDS_HOST>:5432/deflow_db"
+    springProfile: "dev"
+    serverPort: "8080"
+    jwtExpiration: "3600000"
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+
+ingress:
+  className: alb
+  host: team02-app.manoit.co.kr
+  albOriginHost: team02-app-alb.manoit.co.kr

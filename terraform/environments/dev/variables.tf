@@ -115,4 +115,14 @@ variable "frontend_dns_cutover" {
   type        = bool
   default     = false
 }
+variable "github_repository" {
+  description = "GitHub repository (owner/repository) whose Actions workflows may assume the deploy role. Must match the OIDC repository claim exactly, including owner casing."
+  type        = string
+  default     = "Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02"
+}
 
+variable "github_environment" {
+  description = "GitHub Actions environment allowed to assume the deploy role. Jobs declaring a different environment cannot assume it."
+  type        = string
+  default     = "dev"
+}

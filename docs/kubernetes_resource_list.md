@@ -30,7 +30,8 @@
 
 ## Registry
 
-- `Secret/gitlab-registry-secret` (`kubernetes.io/dockerconfigjson`)
+- GHCR public package (`ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02/{backend,frontend}`) — 인증 Secret 불필요
+- `Secret/gitlab-registry-secret` (`kubernetes.io/dockerconfigjson`) — GitLab Registry 회귀 시에만 사용 (전환 완료까지 유지)
 
 ## RBAC
 

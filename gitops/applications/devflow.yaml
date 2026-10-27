@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devflow
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02.git
+      path: helm/devflow
+      targetRevision: "0000000000000000000000000000000000000000"
+      helm:
+        valueFiles:
+          - $values/values/aws-dev.yaml
+    - repoURL: https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02-gitops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: devflow
+  syncPolicy:
+    syncOptions:
+      - RespectIgnoreDifferences=true
+      - ServerSideApply=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: backend
+      jsonPointers:
+        - /spec/replicas

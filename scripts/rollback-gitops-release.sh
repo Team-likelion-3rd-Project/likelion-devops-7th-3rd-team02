@@ -2,17 +2,41 @@
 set -eu
 
 : "${GITOPS_REPO_URL:?GITOPS_REPO_URL is required}"
+<<<<<<< HEAD
+: "${GITOPS_TOKEN:?GITOPS_TOKEN is required (masked Actions secret, contents:write)}"
+: "${GITOPS_RELEASE_COMMIT:?GITOPS_RELEASE_COMMIT is required (release commit to revert; no default)}"
+GITOPS_BRANCH="${GITOPS_BRANCH:-main}"
+GITOPS_TOKEN_USER="${GITOPS_TOKEN_USER:-x-access-token}"
+=======
 : "${GITOPS_TOKEN:?GITOPS_TOKEN is required (masked CI variable, write_repository)}"
 : "${GITOPS_RELEASE_COMMIT:?GITOPS_RELEASE_COMMIT is required (release commit to revert; no default)}"
 GITOPS_BRANCH="${GITOPS_BRANCH:-main}"
+>>>>>>> origin/develop
 
 WORKDIR=$(mktemp -d)
 trap 'rm -rf "$WORKDIR"' EXIT
 
+<<<<<<< HEAD
+mask() {
+  sed "s#$GITOPS_TOKEN#***#g" "$1"
+}
+
+AUTH_URL=$(printf '%s' "$GITOPS_REPO_URL" | sed "s#https://#https://${GITOPS_TOKEN_USER}:${GITOPS_TOKEN}@#")
+
+echo "=== Clone GitOps repository (branch: $GITOPS_BRANCH) ==="
+if ! git clone "$AUTH_URL" "$WORKDIR/repo" > "$WORKDIR/git.log" 2>&1; then   # full clone: verification/revert need release history
+  mask "$WORKDIR/git.log"
+  echo "ERROR: clone of $GITOPS_REPO_URL failed"
+  exit 1
+fi
+cd "$WORKDIR/repo"
+git remote set-url origin "$GITOPS_REPO_URL"
+=======
 echo "=== Clone GitOps repository (branch: $GITOPS_BRANCH) ==="
 AUTH_URL=$(printf '%s' "$GITOPS_REPO_URL" | sed "s#https://#https://oauth2:${GITOPS_TOKEN}@#")
 git clone "$AUTH_URL" "$WORKDIR/repo"   # full clone: verification/revert need release history
 cd "$WORKDIR/repo"
+>>>>>>> origin/develop
 git checkout --quiet "$GITOPS_BRANCH"
 
 echo "=== Verify rollback target is an actual GitOps release commit ==="
@@ -49,8 +73,13 @@ done
 echo "Target OK: '$SUBJECT'"
 
 echo "=== Revert release commit: $GITOPS_RELEASE_COMMIT ==="
+<<<<<<< HEAD
+git config user.name "github-actions-gitops"
+git config user.email "actions@github.com"
+=======
 git config user.name "gitlab-ci-gitops"
 git config user.email "gitlab-ci@localhost"
+>>>>>>> origin/develop
 git revert --no-edit "$GITOPS_RELEASE_COMMIT"
 
 echo "=== Resulting desired state ==="
@@ -63,5 +92,13 @@ done
 grep -n 'tag:' values/aws-dev.yaml || true
 grep -nE 'targetRevision: "[0-9a-f]{40}"' applications/devflow.yaml || true
 
+<<<<<<< HEAD
+if ! git push --quiet "$AUTH_URL" "HEAD:$GITOPS_BRANCH" > "$WORKDIR/git.log" 2>&1; then
+  mask "$WORKDIR/git.log"
+  echo "ERROR: push to $GITOPS_REPO_URL ($GITOPS_BRANCH) failed"
+  exit 1
+fi
+=======
 git push --quiet origin "HEAD:$GITOPS_BRANCH"
+>>>>>>> origin/develop
 echo "=== Revert pushed; Argo CD reconciles to previous desired state ==="

@@ -29,10 +29,10 @@ data "aws_cloudfront_origin_request_policy" "all_viewer_except_host_header" {
   name = "Managed-AllViewerExceptHostHeader"
 }
 
-# S3 origin: Accept-Encoding 등 S3 가 요구하는 헤더 전달.
-data "aws_cloudfront_origin_request_policy" "s3" {
-  name = "Managed-S3"
-}
+# (S3 origin 용 별도 Origin Request Policy 는 두지 않는다: "Managed-S3" 라는
+# managed policy 는 존재하지 않는다. Default behavior 는 Managed-CachingOptimized
+# cache policy 를 쓰고 compress=true 이면 Accept-Encoding 은 CloudFront 가
+# cache policy 와 함께 자동 처리한다.)
 
 # --- Private S3 --------------------------------------------------------------
 
@@ -119,7 +119,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   # Origin 1: Private S3 (OAC). provider v6: origin.origin_access_control_id
   # (s3_origin_config.origin_access_control_id 는 deprecated)
   origin {
-    domain_name              = "${aws_s3_bucket.frontend.bucket}.s3.amazonaws.com"
+    domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_id                = "s3-frontend"
     origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
   }
@@ -139,13 +139,14 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   # Default: SPA/정적 자산. Function 연결은 이 behavior 만.
   default_cache_behavior {
-    target_origin_id         = "s3-frontend"
-    cached_methods           = ["GET", "HEAD"]
-    viewer_protocol_policy   = "redirect-http-to-https"
-    allowed_methods          = ["GET", "HEAD", "OPTIONS"]
-    compress                 = true
-    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_optimized.id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.s3.id
+    target_origin_id       = "s3-frontend"
+    cached_methods         = ["GET", "HEAD"]
+    viewer_protocol_policy = "redirect-http-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    compress               = true
+    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+    # origin_request_policy_id 미지정 (위 주석 참조: Managed-S3 는 존재하지 않음)
+
 
     function_association {
       event_type   = "viewer-request"

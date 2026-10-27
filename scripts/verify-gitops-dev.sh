@@ -7,8 +7,13 @@ APP="${GITOPS_APP_NAME:-devflow}"
 SYNC_TIMEOUT="${GITOPS_SYNC_TIMEOUT:-300}"
 
 # Expected release identity (from the pipeline that triggered this release).
+<<<<<<< HEAD
+EXPECTED_IMAGE_TAG="${EXPECTED_IMAGE_TAG:-${CI_COMMIT_SHORT_SHA:-${GITHUB_SHA_SHORT:-$(printf '%s' "${GITHUB_SHA:-}" | cut -c1-8)}}}"
+EXPECTED_CHART_SHA="${EXPECTED_CHART_SHA:-${CI_COMMIT_SHA:-${GITHUB_SHA:-}}}"
+=======
 EXPECTED_IMAGE_TAG="${EXPECTED_IMAGE_TAG:-${CI_COMMIT_SHORT_SHA:-}}"
 EXPECTED_CHART_SHA="${EXPECTED_CHART_SHA:-${CI_COMMIT_SHA:-}}"
+>>>>>>> origin/develop
 : "${EXPECTED_IMAGE_TAG:?EXPECTED_IMAGE_TAG (or CI_COMMIT_SHORT_SHA) is required}"
 : "${EXPECTED_CHART_SHA:?EXPECTED_CHART_SHA (or CI_COMMIT_SHA) is required}"
 
@@ -42,6 +47,23 @@ if [ "$CHART_REF" != "$EXPECTED_CHART_SHA" ]; then
 fi
 echo "OK      Application chart SHA = $EXPECTED_CHART_SHA"
 
+<<<<<<< HEAD
+VALUES_SOURCE=$(kubectl -n "$ARGO_NS" get application "$APP" \
+  -o jsonpath='{.spec.sources[?(@.ref=="values")]}')
+if [ -z "$VALUES_SOURCE" ]; then
+  echo "ERROR: Application has no values source with ref=values"
+  exit 1
+fi
+case "$VALUES_SOURCE" in
+  *path*)
+    echo "ERROR: values source must not define a path (renders as Helm chart dir): $VALUES_SOURCE"
+    exit 1
+    ;;
+esac
+echo "OK      values source ref=values, no path"
+
+=======
+>>>>>>> origin/develop
 RELEASE_FAILED=0
 for DEP in frontend backend; do
   IMG=$(kubectl -n "$NAMESPACE" get deployment "$DEP" -o jsonpath='{.spec.template.spec.containers[0].image}')
