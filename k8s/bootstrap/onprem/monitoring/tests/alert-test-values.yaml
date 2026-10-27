@@ -1,0 +1,20 @@
+serverFiles:
+  alerting_rules.yml:
+    groups:
+      - name: devflow-webhook-test
+        interval: 15s
+        rules:
+          - alert: DevFlowWebhookTest
+            expr: vector(0) > 0
+            for: 30s
+            labels:
+              severity: warning
+              devflow_env: dev
+              namespace: devflow
+              service: backend
+            annotations:
+              summary: "온프레미스 알림 연동 테스트"
+              description: "실제 앱 장애가 아닌 Webhook 연동 검증입니다."
+              current_value: "1"
+              threshold: "0"
+              unit: "count"

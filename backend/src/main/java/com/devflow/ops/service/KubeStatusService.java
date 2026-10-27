@@ -84,7 +84,8 @@ public class KubeStatusService {
     public OpsDtos.K8sPodList pods(CloudEnvironment env) {
         List<PromSample> samples = prometheus.query(env,
                 "{__name__=~\"kube_pod_status_phase|kube_pod_container_status_restarts_total|kube_pod_container_info"
-                        + "|kube_pod_created|kube_pod_container_status_ready|kube_pod_container_status_waiting_reason\","
+                        + "|kube_pod_created|kube_pod_container_status_ready|kube_pod_container_status_waiting_reason"
+                        + "|kube_pod_deletion_timestamp\","
                         + "namespace=\"" + env.namespace() + "\"}", TTL);
 
         Map<String, PodBuilder> pods = new TreeMap<>();
@@ -109,6 +110,8 @@ public class KubeStatusService {
                     }
                 }
                 case "kube_pod_created" -> pod.createdEpoch = (long) value;
+                // 삭제 요청을 받아 종료 중인 Pod (phase는 끝날 때까지 Running으로 남는다)
+                case "kube_pod_deletion_timestamp" -> pod.terminating = value > 0;
                 case "kube_pod_container_status_ready" -> {
                     if (value >= 1) {
                         pod.ready++;
@@ -147,14 +150,15 @@ public class KubeStatusService {
         private int restarts;
         private int ready;
         private long createdEpoch;
+        private boolean terminating;
 
         private PodBuilder(String name) {
             this.name = name;
         }
 
         private OpsDtos.K8sPod build() {
-            // CrashLoopBackOff 등으로 대기 중이면 그 사유를 상태로 보여 준다
-            String status = waitingReason != null ? waitingReason : phase;
+            // kubectl과 같이 종료 중이면 Terminating, CrashLoopBackOff 등으로 대기 중이면 그 사유를 상태로 보여 준다
+            String status = terminating ? "Terminating" : waitingReason != null ? waitingReason : phase;
             OffsetDateTime created = createdEpoch > 0
                     ? Instant.ofEpochSecond(createdEpoch).atZone(Times.SEOUL).toOffsetDateTime()
                     : null;

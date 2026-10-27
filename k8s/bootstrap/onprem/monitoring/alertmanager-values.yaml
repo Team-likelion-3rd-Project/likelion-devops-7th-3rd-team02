@@ -1,0 +1,60 @@
+alertmanager:
+  enabled: true
+  fullnameOverride: onprem-alertmanager
+  replicaCount: 1
+  automountServiceAccountToken: false
+  nodeSelector:
+    kubernetes.io/hostname: onprem-worker-02
+  persistence:
+    enabled: false
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  configmapReload:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+  service:
+    type: ClusterIP
+    port: 9093
+  ingress:
+    enabled: false
+  extraSecretMounts:
+    - name: devflow-webhook
+      secretName: devflow-alertmanager-webhook
+      mountPath: /etc/alertmanager/devflow
+      readOnly: true
+  config:
+    enabled: true
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: devflow
+      group_by: [alertname, devflow_env]
+      group_wait: 10s
+      group_interval: 30s
+      repeat_interval: 4h
+    receivers:
+      - name: devflow
+        webhook_configs:
+          - url: http://backend.devflow.svc.cluster.local:8080/api/webhooks/alertmanager
+            send_resolved: true
+            http_config:
+              authorization:
+                type: Bearer
+                credentials_file: /etc/alertmanager/devflow/alertmanager-token
+
+server:
+  alertmanagers:
+    - scheme: http
+      static_configs:
+        - targets:
+            - onprem-alertmanager.monitoring.svc.cluster.local:9093

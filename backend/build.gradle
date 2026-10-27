@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.5.4'
+    id 'org.springframework.boot' version '3.5.16'
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -46,6 +46,8 @@ dependencies {
     implementation 'software.amazon.awssdk:cloudwatch'
     // 사용자 계정의 읽기 전용 역할을 AssumeRole (프로젝트별 클라우드 연결)
     implementation 'software.amazon.awssdk:sts'
+    // 업무 첨부파일 저장 (AWS: S3 + presigned URL, 자격 증명은 IRSA)
+    implementation 'software.amazon.awssdk:s3'
 
     // DB 마이그레이션 (버전은 Spring Boot가 관리)
     implementation 'org.flywaydb:flyway-core'

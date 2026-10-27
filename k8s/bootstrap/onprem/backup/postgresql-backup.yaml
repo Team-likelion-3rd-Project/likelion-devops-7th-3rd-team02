@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: onprem-postgresql-backup-pv
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: onprem-local
+  claimRef:
+    namespace: devflow
+    name: postgresql-backup-data
+  local:
+    path: /srv/devflow/postgresql-backups
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - onprem-worker-02
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgresql-backup-data
+  namespace: devflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: onprem-local
+  volumeName: onprem-postgresql-backup-pv
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgresql-backup
+  namespace: devflow
+spec:
+  schedule: "0 18 * * *"
+  timeZone: Asia/Seoul
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels:
+            app: postgresql-backup
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          nodeSelector:
+            kubernetes.io/hostname: onprem-worker-02
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: docker.io/library/postgres@sha256:3645570cccdfa447589da9f57dd740faa29b30938e861289a5574b6ca6b03826
+              imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 300m
+                  memory: 256Mi
+              env:
+                - name: PGHOST
+                  value: postgresql.devflow.svc.cluster.local
+                - name: PGPORT
+                  value: "5432"
+                - name: PGDATABASE
+                  value: devflow
+                - name: PGCONNECT_TIMEOUT
+                  value: "10"
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: backend-secret
+                      key: DB_USERNAME
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: backend-secret
+                      key: DB_PASSWORD
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  umask 077
+                  cd /backups
+
+                  backup_name="devflow-$(date -u +%Y%m%d-%H%M%S)-${HOSTNAME}.dump"
+                  partial="${backup_name}.partial"
+                  trap 'rm -f "$partial"' EXIT
+
+                  pg_dump --format=custom --no-password --schema=public \
+                    --lock-wait-timeout=60s --file="$partial"
+
+                  test -s "$partial"
+                  pg_restore --list "$partial" > /dev/null
+
+                  mv "$partial" "$backup_name"
+                  sha256sum "$backup_name" > "${backup_name}.sha256"
+                  sha256sum -c "${backup_name}.sha256"
+
+                  # 새 백업 검증 성공 후 7일보다 오래된 백업만 정리
+                  find /backups -maxdepth 1 -type f \
+                    -name 'devflow-*.dump' -mmin +10080 \
+                    -exec sh -c '
+                      for backup_path do
+                        rm -f "$backup_path" "${backup_path}.sha256"
+                      done
+                    ' sh {} +
+
+                  printf '백업 완료: %s\n' "$backup_name"
+                  ls -lh "$backup_name" "${backup_name}.sha256"
+              volumeMounts:
+                - name: backup-data
+                  mountPath: /backups
+          volumes:
+            - name: backup-data
+              persistentVolumeClaim:
+                claimName: postgresql-backup-data

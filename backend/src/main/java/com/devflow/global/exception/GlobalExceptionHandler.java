@@ -2,7 +2,12 @@ package com.devflow.global.exception;
 
 import com.devflow.global.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,6 +20,31 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+        @Value("${spring.servlet.multipart.max-file-size:10MB}")
+        private String maxFileSize;
+
+        // 첨부파일(A2) 크기 제한 초과
+        @ExceptionHandler(MaxUploadSizeExceededException.class)
+        public ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException exception) {
+                return toResponse(ErrorCode.ATTACHMENT_TOO_LARGE, "파일은 " + maxFileSize + " 이하만 올릴 수 있습니다.");
+        }
+
+        @ExceptionHandler(MissingServletRequestPartException.class)
+        public ResponseEntity<ErrorResponse> handleMissingPart(MissingServletRequestPartException exception) {
+                return toResponse(ErrorCode.INVALID_REQUEST,
+                                "요청 값 '" + exception.getRequestPartName() + "'이(가) 필요합니다.");
+        }
+
+        @ExceptionHandler(MultipartException.class)
+        public ResponseEntity<ErrorResponse> handleMultipart(MultipartException exception) {
+                return toResponse(ErrorCode.INVALID_REQUEST, "파일은 multipart/form-data로 보내 주세요.");
+        }
+
+        @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+        public ResponseEntity<ErrorResponse> handleMediaType(HttpMediaTypeNotSupportedException exception) {
+                return toResponse(ErrorCode.INVALID_REQUEST, "지원하지 않는 요청 형식입니다.");
+        }
 
         @ExceptionHandler(BusinessException.class)
         public ResponseEntity<ErrorResponse> handleBusinessException(

@@ -1,0 +1,42 @@
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: node-role.kubernetes.io/control-plane
+          operator: DoesNotExist
+deployment:
+  replicas: 1
+ingressClass:
+  enabled: true
+  isDefaultClass: false
+  name: traefik
+ingressRoute:
+  dashboard:
+    enabled: false
+ports:
+  web:
+    nodePort: 30080
+  websecure:
+    nodePort: 30443
+providers:
+  kubernetesCRD:
+    enabled: false
+  kubernetesGateway:
+    enabled: false
+  kubernetesIngress:
+    enabled: true
+    ingressEndpoint:
+      ip: 192.168.56.12
+    publishedService:
+      enabled: false
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+service:
+  spec:
+    type: NodePort

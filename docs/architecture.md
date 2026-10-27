@@ -12,12 +12,21 @@ DevFlow 3차 프로젝트는 2차 MVP에서 구축한 AWS EKS 기반 인프라�
 | Kubernetes | Amazon EKS |
 | Frontend | Amazon S3 + CloudFront |
 | Backend | EKS Deployment, Replica 2 |
+<<<<<<< HEAD
 | Container Registry | GitHub Container Registry (GHCR) |
 | GitLab | GitLab + Runner + Registry 단일 EC2 (전환 검증 완료까지 유지) |
 | CI | GitHub Actions |
 | CD | Argo CD 기반 GitOps |
 | Kubernetes 패키지 관리 | Helm |
 | GitOps Repository | GitHub 별도 Repository |
+=======
+| Container Registry | GitLab Container Registry |
+| GitLab | GitLab + Runner + Registry 단일 EC2 |
+| CI | GitLab CI/CD |
+| CD | Argo CD 기반 GitOps |
+| Kubernetes 패키지 관리 | Helm |
+| GitOps Repository | GitLab 별도 Repository |
+>>>>>>> origin/develop
 | RDS | PostgreSQL Multi-AZ, Private Access |
 | 외부 진입점 | Route 53 + CloudFront + ALB |
 | 파일 저장소 | S3 Attachment Bucket |
@@ -286,14 +295,22 @@ Frontend는 S3 + CloudFront로 제공한다.
 | HPA | 해당 없음 | CPU 60%, min 2, max 6 |
 | 외부 통신 | HTTPS / CloudFront | CloudFront → ALB → Backend |
 | 로그 | CDN/접근 로그 별도 구성 가능 | Loki/Promtail |
+<<<<<<< HEAD
 | 배포 방식 | GitHub Actions → S3 | GitHub Actions → GitOps → Argo CD |
+=======
+| 배포 방식 | GitLab CI → S3 | GitLab CI → GitOps → Argo CD |
+>>>>>>> origin/develop
 
 ### Frontend 배포
 
 ```text
 Developer Push
        ↓
+<<<<<<< HEAD
 GitHub Actions
+=======
+GitLab CI
+>>>>>>> origin/develop
        ↓
 Frontend Build
        ↓
@@ -305,7 +322,11 @@ User Access
 ```
 
 - React 프로젝트를 빌드하여 정적 파일을 생성한다.
+<<<<<<< HEAD
 - GitHub Actions에서 빌드한 정적 파일을 S3에 업로드한다.
+=======
+- GitLab CI에서 생성한 파일을 S3에 업로드한다.
+>>>>>>> origin/develop
 - 필요한 경우 CloudFront 캐시를 무효화한다.
 - 사용자 요청은 CloudFront를 통해 처리한다.
 
@@ -314,11 +335,19 @@ User Access
 ```text
 Developer Push
        ↓
+<<<<<<< HEAD
 GitHub Actions
        ↓
 Test & Docker Build
        ↓
 GitHub Container Registry (GHCR)
+=======
+GitLab Runner
+       ↓
+Test & Docker Build
+       ↓
+GitLab Container Registry
+>>>>>>> origin/develop
        ↓
 GitOps Repository Update
        ↓
@@ -327,7 +356,11 @@ Argo CD Sync
 EKS Deployment Update
 ```
 
+<<<<<<< HEAD
 - Backend 이미지를 GitHub Container Registry(GHCR) public package에 저장한다.
+=======
+- Backend 이미지를 GitLab Container Registry에 저장한다.
+>>>>>>> origin/develop
 - GitOps Repository의 배포 이미지 버전을 갱신한다.
 - Argo CD가 변경 사항을 감지하여 Kubernetes에 반영한다.
 - EKS Worker Node가 Registry에서 새 이미지를 가져온다.
@@ -517,7 +550,11 @@ DevFlow 애플리케이션 자체의 프로젝트별 사용자 권한과 Kuberne
 
 실제 역할별 기능 접근 범위는 애플리케이션 권한 정책에 따라 결정한다.
 
+<<<<<<< HEAD
 ## 14. CI/CD 및 GitOps
+=======
+## 14. GitLab CI/CD 및 GitOps
+>>>>>>> origin/develop
 
 ### 기존 2차 방식
 
@@ -543,17 +580,28 @@ EKS
 Developer
     │
     ▼
+<<<<<<< HEAD
 GitHub Application Repository
     │
     ▼
 GitHub Actions
+=======
+GitLab Application Repository
+    │
+    ▼
+GitLab Runner
+>>>>>>> origin/develop
     │
     ├── Test
     ├── Build
     └── Docker Build
            │
            ▼
+<<<<<<< HEAD
    GitHub Container Registry (GHCR)
+=======
+   GitLab Container Registry
+>>>>>>> origin/develop
            │
            ▼
    GitOps Repository Update
@@ -928,3 +976,6 @@ GitLab Runner
 ```
 
 **최종 목표:** 기존 2차 MVP를 기반으로 DevFlow를 GitOps 중심의 자동 배포, 클라우드 네이티브 운영, 중앙 모니터링 및 고가용성 기능을 갖춘 3차 확장 플랫폼으로 발전시킨다.
+**최종 목표:** 기존 2차 MVP를 기반으로 DevFlow를 GitOps 중심의 자동 배포, 클라우드 네이티브 운영, 중앙 모니터링 및 고가용성 기능을 갖춘 3차 확장 플랫폼으로 발전시킨다.
+
+본 문서는 3차 목표 아키텍처를 정의하며, 각 리소스의 실제 배포 완료 여부는 해당 Phase의 구현 및 검증 결과에 따라 별도로 판단한다.

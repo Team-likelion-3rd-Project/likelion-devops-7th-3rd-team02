@@ -147,6 +147,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
     # origin_request_policy_id 미지정 (위 주석 참조: Managed-S3 는 존재하지 않음)
 
+
     function_association {
       event_type   = "viewer-request"
       function_arn = aws_cloudfront_function.spa_rewrite.arn

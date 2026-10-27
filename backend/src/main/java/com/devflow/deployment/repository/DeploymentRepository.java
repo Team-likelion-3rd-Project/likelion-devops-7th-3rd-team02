@@ -12,6 +12,10 @@ public interface DeploymentRepository extends JpaRepository<Deployment, Long> {
 
     Optional<Deployment> findByProjectIdAndPipelineIdAndService(Long projectId, Long pipelineId, String service);
 
+    /** pipelineId 없는 기록의 중복 판단용: 그 환경·서비스의 가장 최근 기록 */
+    Optional<Deployment> findFirstByProjectIdAndEnvironmentAndServiceOrderByDeployedAtDescIdDesc(
+            Long projectId, String environment, String service);
+
     Page<Deployment> findByProjectId(Long projectId, Pageable pageable);
 
     Page<Deployment> findByProjectIdAndEnvironment(Long projectId, String environment, Pageable pageable);

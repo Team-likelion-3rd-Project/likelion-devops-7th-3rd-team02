@@ -205,7 +205,6 @@ output "alb_origin_hostname" {
   description = "Dedicated ALB origin hostname used in the Helm value ingress.albOriginHost (GitOps per-env values)."
   value       = var.alb_origin_hostname
 }
-
 # --- GitHub Actions OIDC ------------------------------------------------------
 output "github_actions_role_arn" {
   description = "IAM Role ARN for GitHub Actions OIDC. GitHub Actions variable AWS_DEPLOY_ROLE_ARN: terraform -chdir=terraform/environments/dev output -raw github_actions_role_arn"

@@ -1,4 +1,4 @@
-﻿name: Container Images
+name: Container Images
 
 on:
   pull_request:
@@ -7,12 +7,14 @@ on:
       - "backend/**"
       - "frontend/**"
       - ".github/workflows/container-images.yml"
+      - "scripts/ci/summarize-trivy.py"
   push:
     branches: [develop]
     paths:
       - "backend/**"
       - "frontend/**"
       - ".github/workflows/container-images.yml"
+      - "scripts/ci/summarize-trivy.py"
   workflow_dispatch:
 
 permissions:
@@ -22,7 +24,7 @@ jobs:
   images:
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     permissions:
       contents: read
       packages: write
@@ -64,6 +66,8 @@ jobs:
           tags: |
             ${{ steps.image.outputs.name }}:${{ steps.image.outputs.short }}
             ${{ steps.image.outputs.name }}:${{ github.sha }}
+          outputs: ${{ github.event_name == 'pull_request' && format('type=docker,dest={0}/image-{1}.tar', runner.temp, matrix.component) || '' }}
+          tags: ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -81,3 +85,63 @@ jobs:
           echo "Tag: ${IMAGE_NAME}:${GITHUB_SHA::8}" >> "$GITHUB_STEP_SUMMARY"
           echo "Immutable tag: ${IMAGE_NAME}:${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
           echo "Digest: ${IMAGE_NAME}@${IMAGE_DIGEST}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Scan PR image archive
+        id: scan_pr
+        if: github.event_name == 'pull_request'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.70.0
+          scan-type: image
+          input: ${{ runner.temp }}/image-${{ matrix.component }}.tar
+          scanners: vuln
+          vuln-type: os,library
+          format: json
+          output: ${{ runner.temp }}/trivy-${{ matrix.component }}.json
+          exit-code: "0"
+          timeout: 10m
+        env:
+          TRIVY_IGNORE_UNFIXED: "false"
+          TRIVY_IGNOREFILE: /dev/null
+          TRIVY_SEVERITY: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+
+      - name: Scan published image digest
+        id: scan_published
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.70.0
+          scan-type: image
+          image-ref: ${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}
+          scanners: vuln
+          vuln-type: os,library
+          format: json
+          output: ${{ runner.temp }}/trivy-${{ matrix.component }}.json
+          exit-code: "0"
+          timeout: 10m
+        env:
+          TRIVY_IGNORE_UNFIXED: "false"
+          TRIVY_IGNOREFILE: /dev/null
+          TRIVY_SEVERITY: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+
+      - name: Summarize vulnerability report
+        if: ${{ !cancelled() && (steps.scan_pr.outcome == 'success' || steps.scan_published.outcome == 'success') }}
+        shell: bash
+        env:
+          COMPONENT: ${{ matrix.component }}
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          REPORT_DIR: ${{ runner.temp }}
+        run: |
+          python3 scripts/ci/summarize-trivy.py
+
+      - name: Upload vulnerability report
+        if: ${{ !cancelled() && (steps.scan_pr.outcome == 'success' || steps.scan_published.outcome == 'success') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: trivy-${{ matrix.component }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/trivy-${{ matrix.component }}.json
+            ${{ runner.temp }}/trivy-${{ matrix.component }}-metadata.json
+          if-no-files-found: error
+          retention-days: 14

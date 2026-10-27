@@ -49,5 +49,7 @@ Thumbs.db
 
 # ── 기타 ──────────────────────────────────────
 *.sqlite3
+opencode*
+AGENTS*
 /uploads/
 /tmp/

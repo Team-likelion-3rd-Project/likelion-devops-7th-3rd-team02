@@ -79,6 +79,8 @@ eks-kubectl-check:
     - aws sts get-caller-identity
     - aws eks update-kubeconfig --region ap-northeast-1 --name devflow-dev-eks
     - kubectl get namespaces
+# DEPRECATED (Phase 3.1): kubectl direct deploy path. Keep for transition
+# rollback only; remove after GitOps cutover verification (Plan §6 steps 13-15).
 deploy-dev:
   stage: deploy
   image:
@@ -113,6 +115,8 @@ health-check-dev:
     - feature/devops
     - develop
 
+# DEPRECATED (Phase 3.1): kubectl rollout undo path. Git-only rollback is
+# rollback-gitops-dev below. Remove after GitOps cutover verification.
 rollback-dev:
   stage: deploy
   image:
@@ -131,6 +135,12 @@ rollback-dev:
     - feature/devops
     - develop
 
+<<<<<<< HEAD
+=======
+# ---- Phase 3.1 GitOps path — replaces the kubectl jobs above after cutover ----
+# GITOPS_TOKEN: masked CI/CD variable (project access token, write_repository
+# scope on the GitOps repository). Creating/registering it is a user action.
+>>>>>>> origin/develop
 deploy-gitops-dev:
   stage: deploy
   image:

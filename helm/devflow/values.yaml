@@ -1,23 +1,11 @@
-# Default values for the devflow chart.
-# Only values that actually change per environment/release are parameterized.
-# Everything else mirrors the original k8s/ manifests 1:1 (Phase 3.1 semantic
-# preservation). Per-environment overrides live in the GitOps repository
-# (devflow-gitops: values/aws-dev.yaml), not here.
-
 global:
-  # Namespace is created/managed outside the chart (existing devflow namespace,
-  # shared with monitoring). Templates reference it explicitly.
   namespace: devflow
-  # imagePullSecret created manually (k8s/registry/image-pull-secret.example.yaml)
   imagePullSecretName: ""
 
 frontend:
   replicaCount: 2
   image:
     repository: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02/frontend
-    # "<IMAGE_TAG>" mirrors the pre-GitOps manifest placeholder so that
-    # `helm template` output equals the original manifests. The GitOps release
-    # commit always overrides this with the real image tag.
     tag: "<IMAGE_TAG>"
 
 backend:

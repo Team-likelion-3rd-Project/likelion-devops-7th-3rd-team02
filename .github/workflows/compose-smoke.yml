@@ -73,11 +73,11 @@ jobs:
             -H 'Content-Type: application/json' -d '{not json')
           test "$status" = "400"
 
-      - name: Flyway migrations applied (V1 기준선, V2 인덱스, V3 배포, V4 장애, V5 환경·저장소 연결, V6 소셜 로그인, V7 프로젝트 클라우드 연결)
+      - name: Flyway migrations applied (V1 기준선, V2 인덱스, V3 배포, V4 장애, V5 환경·저장소 연결, V6 소셜 로그인, V7 프로젝트 클라우드 연결, V8 첨부파일)
         run: |
           docker compose exec -T postgres psql -U devflow -d devflow -tAc \
             "select version from flyway_schema_history where success order by installed_rank" | tee versions.txt
-          for v in 1 2 3 4 5 6 7; do grep -qx "$v" versions.txt; done
+          for v in 1 2 3 4 5 6 7 8; do grep -qx "$v" versions.txt; done
 
       - name: Signup → Login → Me → Create project (role)
         run: |
@@ -193,6 +193,60 @@ jobs:
           other=$(curl -fsS -X POST $api -H "$auth" -H 'Content-Type: application/json' -d '{"title":"OWNER 삭제"}' | jq -r '.data.id')
           curl -fsS -X DELETE $api/$other -H "$auth" | jq -e '.success'
           curl -fsS "$api" -H "$auth" | jq -e '.data.totalCount == 3'
+
+      - name: Task attachments (A1~A4) — 업로드·목록·다운로드·삭제 권한·크기 제한·업무 삭제 시 정리
+        run: |
+          set -e
+          base=http://localhost:3000
+          api=$base/api/projects/$PROJECT_ID/tasks
+          oauth="Authorization: Bearer $OWNER_TOKEN"; mauth="Authorization: Bearer $MEMBER_TOKEN"
+          tid=$(curl -fsS -X POST $api -H "$oauth" -H 'Content-Type: application/json' -d '{"title":"첨부 테스트"}' | jq -r '.data.id')
+          att=$api/$tid/attachments
+          printf '회의 메모 본문' > memo.txt
+
+          # 인증 없음 401, 빈 파일 400
+          test "$(curl -s -o /dev/null -w '%{http_code}' $att)" = "401"
+          : > empty.txt
+          status=$(curl -s -o e.json -w '%{http_code}' -X POST $att -H "$mauth" -F "file=@empty.txt")
+          test "$status" = "400" && jq -e '.code == "INVALID_REQUEST"' e.json
+
+          # A2 팀원 업로드 (한글 파일 이름) → 201
+          curl -fsS -X POST $att -H "$mauth" -F "file=@memo.txt;type=text/plain;filename=회의 메모.txt" | tee up.json \
+            | jq -e --argjson n "$(wc -c < memo.txt)" '.data | .fileName == "회의 메모.txt" and .contentType == "text/plain" and .size == $n and .uploaderName == "팀원" and (.createdAt | test("\\+09:00$"))'
+          a1=$(jq -r '.data.id' up.json)
+          # OWNER 업로드
+          a2=$(curl -fsS -X POST $att -H "$oauth" -F "file=@memo.txt;filename=owner.txt" | jq -r '.data.id')
+
+          # A1 목록
+          curl -fsS $att -H "$oauth" | jq -e '(.data | length) == 2 and .data[0].id == '"$a1"
+
+          # A3 다운로드 주소 → 인증 없이 열림, 내용·파일 이름 일치
+          curl -fsS $att/$a1/download -H "$mauth" | tee dl.json | jq -e '(.data.url | startswith("/api/attachments/files/")) and .data.expiresAt != null'
+          url=$(jq -r '.data.url' dl.json)
+          curl -fsS -D dl.h -o got.txt "$base$url"
+          cmp memo.txt got.txt
+          grep -qi "content-disposition: attachment" dl.h
+          grep -qi "filename\*=UTF-8''" dl.h
+          # 위조 토큰 404
+          status=$(curl -s -o e.json -w '%{http_code}' "$base${url}x")
+          test "$status" = "404" && jq -e '.code == "ATTACHMENT_NOT_FOUND"' e.json
+
+          # A4 삭제: 팀원은 남의 파일 403, 자기 파일 200
+          status=$(curl -s -o e.json -w '%{http_code}' -X DELETE $att/$a2 -H "$mauth")
+          test "$status" = "403" && jq -e '.code == "FORBIDDEN"' e.json
+          curl -fsS -X DELETE $att/$a1 -H "$mauth" | jq -e '.success'
+          test "$(curl -s -o /dev/null -w '%{http_code}' $att/$a1/download -H "$oauth")" = "404"
+
+          # 크기 제한 (10MB 초과) → 413 JSON
+          head -c 11000000 /dev/urandom > big.bin
+          status=$(curl -s -o e.json -w '%{http_code}' -X POST $att -H "$oauth" -F "file=@big.bin")
+          test "$status" = "413" && jq -e '.code == "ATTACHMENT_TOO_LARGE"' e.json || { cat e.json; exit 1; }
+
+          # 업무 삭제(T7) → 첨부 메타데이터와 파일 모두 정리
+          curl -fsS -X DELETE $api/$tid -H "$oauth" | jq -e '.success'
+          test "$(curl -s -o /dev/null -w '%{http_code}' $att -H "$oauth")" = "404"
+          left=$(docker compose exec -T backend sh -c "find /tmp/devflow-attachments/projects/$PROJECT_ID/tasks/$tid -type f 2>/dev/null | wc -l")
+          test "$(echo $left | tr -d '[:space:]')" = "0"
 
       - name: Deployment webhook (D3) → history (D1)
         run: |
@@ -403,6 +457,16 @@ jobs:
           body='{"environment":"dev","service":"backend","commitSha":"9a8b7c6","imageTag":"9a8b7c6","status":"SUCCESS","pipelineId":201}'
           # 프로젝트 토큰이면 projectId 생략 가능
           curl -fsS -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" -d "$body" | jq -e '.data.imageTag == "9a8b7c6"'
+          # pipelineId 없는 기록: 같은 릴리스를 다시 보내면(Argo CD 재동기화) 새로 만들지 않음, 커밋이 바뀌면 새 기록
+          dep=$base/deployments
+          before=$(curl -fsS "$dep?size=1" -H "$auth" | jq '.data.totalCount')
+          nopl='{"environment":"dev","service":"frontend","commitSha":"abc1234","imageTag":"abc1234","imageDigest":"sha256:f1","status":"SUCCESS"}'
+          id1=$(curl -fsS -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" -d "$nopl" | jq -r '.data.id')
+          id2=$(curl -fsS -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" -d "$nopl" | jq -r '.data.id')
+          test "$id1" = "$id2"
+          curl -fsS -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" \
+            -d "$(echo "$nopl" | jq -c '.commitSha = "def5678" | .imageDigest = "sha256:f2"')" | jq -e --argjson a "$id1" '.data.id != $a'
+          curl -fsS "$dep?size=1" -H "$auth" | jq -e --argjson b "$before" '.data.totalCount == ($b + 2)'
           # 토큰의 프로젝트와 다른 projectId → 403
           status=$(curl -s -o /dev/null -w '%{http_code}' -X POST $hook -H "Authorization: Bearer $dtoken" -H "$json" \
             -d "$(echo "$body" | jq -c --argjson p "$EMPTY_PROJECT_ID" '.projectId = $p')")
@@ -485,6 +549,11 @@ jobs:
           # 7) 설정되지 않은 제공자(Google) → oauth_failed
           curl -s -o /dev/null -D g.h "$base/oauth2/authorization/google"
           test "$(loc g.h)" = "http://localhost:3000/oauth/callback?error=oauth_failed"
+
+      - name: k6 smoke (부하 테스트 스크립트 동작 확인)
+        run: |
+          docker run --rm -i --network host -v "$PWD/scripts/k6:/s" grafana/k6:0.54.0 \
+            run -e BASE_URL=http://localhost:3000 -e PROFILE=smoke /s/devflow-load.js
 
       - name: Graceful shutdown
         run: |

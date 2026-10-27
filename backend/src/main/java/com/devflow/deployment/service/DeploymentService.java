@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -41,20 +42,37 @@ public class DeploymentService {
     private final ProjectEnvironments environments;
     private final KubeStatusService kubeStatus;
 
-    /** D3: 배포 기록 저장. pipelineId가 같으면 시작 기록을 완료 기록으로 갱신 */
+    /**
+     * D3: 배포 기록 저장.
+     * - pipelineId가 있으면 같은 pipelineId+service 기록을 갱신 (시작 → 완료)
+     * - pipelineId가 없으면 그 환경·서비스의 가장 최근 기록과 커밋·이미지가 같을 때 새로 만들지 않는다
+     *   (Argo CD 재동기화로 같은 릴리스가 반복 전송되는 경우). 상태가 같으면 그대로 두고, 다르면 갱신
+     */
     @Transactional
     public DeploymentResponse record(Long projectId, DeploymentWebhookRequest request) {
         Project project = projectAccessChecker.getProject(projectId);
         String service = request.service().trim();
+        String environment = request.environment().trim();
 
-        Deployment deployment = request.pipelineId() == null
-                ? new Deployment(project, service, null)
-                : deploymentRepository
-                        .findByProjectIdAndPipelineIdAndService(project.getId(), request.pipelineId(), service)
-                        .orElseGet(() -> new Deployment(project, service, request.pipelineId()));
+        Deployment deployment;
+        if (request.pipelineId() != null) {
+            deployment = deploymentRepository
+                    .findByProjectIdAndPipelineIdAndService(project.getId(), request.pipelineId(), service)
+                    .orElseGet(() -> new Deployment(project, service, request.pipelineId()));
+        } else {
+            Optional<Deployment> latest = deploymentRepository
+                    .findFirstByProjectIdAndEnvironmentAndServiceOrderByDeployedAtDescIdDesc(project.getId(), environment, service)
+                    .filter(d -> sameRelease(d, request));
+            if (latest.isPresent() && latest.get().getStatus() == request.status()) {
+                log.info("deployment duplicate ignored: project={}, env={}, service={}, commit={}",
+                        project.getId(), environment, service, latest.get().getCommitSha());
+                return DeploymentResponse.from(latest.get());
+            }
+            deployment = latest.orElseGet(() -> new Deployment(project, service, null));
+        }
 
         deployment.record(
-                request.environment().trim(),
+                environment,
                 request.commitSha().toLowerCase(),
                 request.commitTitle(),
                 request.imageTag().trim(),
@@ -68,6 +86,17 @@ public class DeploymentService {
         log.info("deployment recorded: project={}, env={}, service={}, pipeline={}, status={}",
                 project.getId(), saved.getEnvironment(), service, saved.getPipelineId(), saved.getStatus());
         return DeploymentResponse.from(saved);
+    }
+
+    /** 같은 릴리스: pipelineId 없는 기록이고, 커밋이 같고, 이미지 digest(둘 다 있으면) 또는 태그가 같음 */
+    static boolean sameRelease(Deployment existing, DeploymentWebhookRequest request) {
+        if (existing.getPipelineId() != null || !existing.getCommitSha().equalsIgnoreCase(request.commitSha())) {
+            return false;
+        }
+        if (existing.getImageDigest() != null && request.imageDigest() != null) {
+            return existing.getImageDigest().equals(request.imageDigest());
+        }
+        return existing.getImageTag().equals(request.imageTag().trim());
     }
 
     /** D1: 배포 이력 (최신순). environment를 주면 그 환경만 */
