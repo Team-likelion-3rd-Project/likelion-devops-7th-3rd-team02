@@ -1,5 +1,6 @@
 package com.devflow.task.service;
 
+import com.devflow.attachment.AttachmentService;
 import com.devflow.global.exception.BusinessException;
 import com.devflow.global.exception.ErrorCode;
 import com.devflow.member.entity.ProjectMember;
@@ -35,6 +36,7 @@ public class TaskService {
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
     private final ProjectAccessChecker projectAccessChecker;
+    private final AttachmentService attachmentService;
 
     @Transactional
     public TaskResponse createTask(
@@ -178,6 +180,8 @@ public class TaskService {
         if (membership.getRole() != ProjectRole.OWNER && !assignee) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "업무는 프로젝트 OWNER 또는 담당자만 삭제할 수 있습니다.");
         }
+        // 첨부파일은 저장소의 파일까지 먼저 지운다 (DB 행은 FK CASCADE로도 지워지지만 파일은 남기 때문)
+        attachmentService.purgeTask(task.getId());
         taskRepository.delete(task);
     }
 
