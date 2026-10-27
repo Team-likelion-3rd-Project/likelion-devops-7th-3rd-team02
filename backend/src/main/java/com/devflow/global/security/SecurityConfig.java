@@ -84,6 +84,8 @@ public class SecurityConfig {
                                 "/login/oauth2/**",
                                 // CI·Alertmanager가 호출. JWT 대신 Webhook 공유 토큰을 컨트롤러에서 확인
                                 "/api/webhooks/**",
+                                // 첨부파일 로컬 저장소 다운로드: 서명·만료 토큰으로 보호 (A3이 발급)
+                                "/api/attachments/files/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",

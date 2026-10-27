@@ -159,6 +159,30 @@ public enum ErrorCode {
             "연결할 수 없는 주소입니다."
     ),
 
+    ATTACHMENT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "ATTACHMENT_NOT_FOUND",
+            "첨부파일을 찾을 수 없습니다."
+    ),
+
+    ATTACHMENT_TOO_LARGE(
+            HttpStatus.PAYLOAD_TOO_LARGE,
+            "ATTACHMENT_TOO_LARGE",
+            "파일이 너무 큽니다."
+    ),
+
+    ATTACHMENT_LIMIT_EXCEEDED(
+            HttpStatus.BAD_REQUEST,
+            "ATTACHMENT_LIMIT_EXCEEDED",
+            "첨부파일 개수 제한을 넘었습니다."
+    ),
+
+    ATTACHMENT_STORAGE_ERROR(
+            HttpStatus.BAD_GATEWAY,
+            "ATTACHMENT_STORAGE_ERROR",
+            "파일 저장소에 문제가 있어 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+    ),
+
     INTERNAL_SERVER_ERROR(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "INTERNAL_SERVER_ERROR",
