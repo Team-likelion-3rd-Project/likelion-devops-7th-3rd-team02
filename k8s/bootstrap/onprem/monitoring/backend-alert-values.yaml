@@ -1,0 +1,26 @@
+serverFiles:
+  alerting_rules.yml:
+    groups:
+      - name: devflow-backend-availability
+        interval: 30s
+        rules:
+          - alert: DevFlowBackendUnavailable
+            expr: |
+              kube_deployment_status_replicas_available{
+                namespace="devflow", deployment="backend"
+              } < 1
+              and on(namespace, deployment)
+              kube_deployment_spec_replicas{
+                namespace="devflow", deployment="backend"
+              } > 0
+            for: 2m
+            labels:
+              severity: warning
+              devflow_env: dev
+              service: backend
+            annotations:
+              summary: "Backend 사용 가능 Pod 없음"
+              description: "목표 Pod가 있지만 사용 가능한 Backend Pod가 2분 이상 없습니다."
+              current_value: "0"
+              threshold: "1"
+              unit: "pods"

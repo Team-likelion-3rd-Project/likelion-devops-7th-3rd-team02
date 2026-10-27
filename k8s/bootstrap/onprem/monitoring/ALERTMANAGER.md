@@ -20,6 +20,8 @@
 - tests/alert-test-values.yaml: 별도 수동 검증용 규칙, 기본 비활성 조건
 
 운영 적용에는 테스트 파일을 포함하지 않는다.
+Backend 가용성 규칙을 유지하려면 Helm 적용 시
+backend-alert-values.yaml도 함께 지정한다.
 
 ## Secret 준비
 
@@ -43,9 +45,9 @@ DevFlow 프로젝트 소유자가 화면에서 발급한 Alertmanager 토큰을 
 아래 명령은 저장소 루트 기준으로 CP SSH에서 실행한다.
 필요한 파일이 CP에 복사되어 있어야 한다.
 
-    helm template onprem-monitoring prometheus-community/prometheus --version 29.37.0 --namespace monitoring -f k8s/bootstrap/onprem/monitoring/values.yaml -f k8s/bootstrap/onprem/monitoring/alertmanager-values.yaml > /tmp/onprem-monitoring-rendered.yaml
+    helm template onprem-monitoring prometheus-community/prometheus --version 29.37.0 --namespace monitoring -f k8s/bootstrap/onprem/monitoring/values.yaml -f k8s/bootstrap/onprem/monitoring/alertmanager-values.yaml -f k8s/bootstrap/onprem/monitoring/backend-alert-values.yaml > /tmp/onprem-monitoring-rendered.yaml
 
-    helm upgrade --install onprem-monitoring prometheus-community/prometheus --version 29.37.0 --namespace monitoring -f k8s/bootstrap/onprem/monitoring/values.yaml -f k8s/bootstrap/onprem/monitoring/alertmanager-values.yaml --wait --timeout 10m
+    helm upgrade --install onprem-monitoring prometheus-community/prometheus --version 29.37.0 --namespace monitoring -f k8s/bootstrap/onprem/monitoring/values.yaml -f k8s/bootstrap/onprem/monitoring/alertmanager-values.yaml -f k8s/bootstrap/onprem/monitoring/backend-alert-values.yaml --wait --timeout 10m
 
 이 경로는 현재 DevFlow Argo CD Application의 동기화 대상이 아니다.
 Helm 변경은 운영자가 별도로 실행한다.
@@ -92,3 +94,24 @@ OPEN 상태는 알림이 해제되어도 자동으로 닫히지 않는다.
 - emptyDir이므로 Pod 재생성 시 알림 억제 및 중복 전송 방지 상태가 초기화될 수 있다.
 - DevFlow DB에 저장된 장애 이력은 Alertmanager 저장소와 별개다.
 - 토큰이 속한 프로젝트에 알림이 기록되므로 시연 프로젝트 변경 시 토큰을 재설정한다.
+
+## Backend 가용성 알림
+
+- 규칙 파일: backend-alert-values.yaml
+- 대상: devflow 네임스페이스의 backend Deployment
+- 조건: 목표 Pod 수가 0보다 크고 사용 가능한 Pod 수가 0
+- 지속 시간: 2분
+- 심각도: warning
+- 환경: dev
+
+2026-10-27 정상 상태 검증:
+- 규칙 health=ok, state=inactive
+- 활성 알림 없음, Alertmanager 연결 정상
+- 실제 Backend 중단과 규칙 발생 검증은 아직 수행하지 않음
+
+Backend가 완전히 중단되면 같은 Backend의 Webhook도 수신할 수 없다.
+복구 후 전달 여부를 검증해야 하며, 장애 중 독립 알림 경로는 별도 구성한다.
+kube-state-metrics 지표가 없는 상황을 감지하는 규칙도 별도 필요하다.
+
+적용 시 운영 values.yaml, alertmanager-values.yaml,
+backend-alert-values.yaml을 순서대로 모두 지정한다.
