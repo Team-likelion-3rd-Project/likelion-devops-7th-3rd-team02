@@ -1,0 +1,155 @@
+name: Release Dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: "Full 40-char commit SHA to release (empty = the commit this workflow was dispatched on)"
+        required: false
+        default: ""
+
+concurrency:
+  group: gitops-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Verify CI, images, GitOps target
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+    outputs:
+      release_sha: ${{ steps.target.outputs.sha }}
+      image_tag: ${{ steps.target.outputs.short }}
+    env:
+      GH_API: https://api.github.com/repos/${{ github.repository }}
+      IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+    steps:
+      - name: Require an approved release branch
+        run: |
+          case "$GITHUB_REF" in
+            refs/heads/develop|refs/heads/main)
+              echo "dispatched from $GITHUB_REF"
+              ;;
+            *)
+              echo "::error::release-dev may only be dispatched from develop or main (got $GITHUB_REF)"
+              exit 1
+              ;;
+          esac
+
+      - name: Require GitOps repository settings
+        env:
+          GITOPS_TOKEN_PRESENT: ${{ secrets.GITOPS_TOKEN != '' }}
+        run: |
+          if [ "$GITOPS_TOKEN_PRESENT" != "true" ]; then
+            echo "::error::GITOPS_TOKEN secret is not available (contents:write on the GitOps repository)"
+            exit 1
+          fi
+
+      - name: Resolve target commit
+        id: target
+        env:
+          INPUT_SHA: ${{ inputs.release_sha }}
+        run: |
+          sha="${INPUT_SHA:-$GITHUB_SHA}"
+          if [ "${#sha}" -ne 40 ]; then
+            echo "::error::release_sha must be a full 40-character commit SHA (got ${#sha} characters)"
+            exit 1
+          fi
+          case "$sha" in
+            *[!0-9a-f]*)
+              echo "::error::release_sha must be lowercase hexadecimal"
+              exit 1
+              ;;
+          esac
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short=${sha::8}" >> "$GITHUB_OUTPUT"
+          echo "target commit: $sha (image tag ${sha::8})"
+
+      - name: Require successful CI for the target commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha="${{ steps.target.outputs.sha }}"
+          state=$(curl -fsS -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "$GH_API/actions/workflows/ci.yml/runs?head_sha=$sha&per_page=100" |
+            jq -r --arg sha "$sha" '[.workflow_runs[] | select(.head_sha == $sha)][0] | "\(.status)/\(.conclusion)"')
+          echo "CI for $sha: $state"
+          if [ "$state" != "completed/success" ]; then
+            echo "::error::CI did not succeed for $sha ($state)"
+            exit 1
+          fi
+
+      - name: Require successful Container Images run for the target commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha="${{ steps.target.outputs.sha }}"
+          state=$(curl -fsS -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "$GH_API/actions/workflows/container-images.yml/runs?head_sha=$sha&per_page=100" |
+            jq -r --arg sha "$sha" '[.workflow_runs[] | select(.head_sha == $sha)][0] | "\(.status)/\(.conclusion)"')
+          echo "Container Images for $sha: $state"
+          if [ "$state" != "completed/success" ]; then
+            echo "::error::images were not built successfully for $sha ($state)"
+            exit 1
+          fi
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require published GHCR images
+        env:
+          IMAGE_TAG: ${{ steps.target.outputs.short }}
+        run: |
+          prefix=$(printf '%s' "$IMAGE_PREFIX" | tr 'A-Z' 'a-z')
+          for component in backend frontend; do
+            if ! docker buildx imagetools inspect "$prefix/$component:$IMAGE_TAG" > /dev/null 2>&1; then
+              echo "::error::$component image is not published for this commit ($prefix/$component:$IMAGE_TAG)"
+              exit 1
+            fi
+            echo "OK $component:$IMAGE_TAG"
+          done
+
+  release:
+    name: GitOps release commit
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: dev
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push GitOps release commit
+        env:
+          GITOPS_REPO_URL: ${{ vars.GITOPS_REPO_URL || 'https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02-gitops.git' }}
+          GITOPS_BRANCH: ${{ vars.GITOPS_BRANCH || 'main' }}
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          GITHUB_SHA: ${{ needs.preflight.outputs.release_sha }}
+          GITHUB_SHA_SHORT: ${{ needs.preflight.outputs.image_tag }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: sh ./scripts/update-gitops-release.sh
+
+      - name: Record release in summary
+        env:
+          IMAGE_TAG: ${{ needs.preflight.outputs.image_tag }}
+          CHART_SHA: ${{ needs.preflight.outputs.release_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "## GitOps release"
+            echo "- image tag: \`$IMAGE_TAG\`"
+            echo "- chart revision: \`$CHART_SHA\`"
+            echo "- workflow: $RUN_URL"
+          } >> "$GITHUB_STEP_SUMMARY"

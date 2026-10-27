@@ -9,12 +9,12 @@ global:
   # shared with monitoring). Templates reference it explicitly.
   namespace: devflow
   # imagePullSecret created manually (k8s/registry/image-pull-secret.example.yaml)
-  imagePullSecretName: gitlab-registry-secret
+  imagePullSecretName: ""
 
 frontend:
   replicaCount: 2
   image:
-    repository: team02-gitlab.manoit.co.kr:5050/root/devflow/frontend
+    repository: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02/frontend
     # "<IMAGE_TAG>" mirrors the pre-GitOps manifest placeholder so that
     # `helm template` output equals the original manifests. The GitOps release
     # commit always overrides this with the real image tag.
@@ -23,7 +23,7 @@ frontend:
 backend:
   replicaCount: 2
   image:
-    repository: team02-gitlab.manoit.co.kr:5050/root/devflow/backend
+    repository: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02/backend
     tag: "<IMAGE_TAG>"
   config:
     dbUrl: "jdbc:postgresql://<RDS_HOST>:5432/deflow_db"

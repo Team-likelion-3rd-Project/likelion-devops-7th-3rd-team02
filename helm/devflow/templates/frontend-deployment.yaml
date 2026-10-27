@@ -30,8 +30,10 @@ spec:
     spec:
       serviceAccountName: frontend-sa
       automountServiceAccountToken: false
+      {{- with .Values.global.imagePullSecretName }}
       imagePullSecrets:
-        - name: {{ .Values.global.imagePullSecretName }}
+        - name: {{ . }}
+      {{- end }}
       nodeSelector:
         kubernetes.io/os: linux
       affinity:

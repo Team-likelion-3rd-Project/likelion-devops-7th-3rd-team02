@@ -173,14 +173,15 @@ module "frontend_hosting" {
 data "aws_caller_identity" "current" {}
 
 # takeover 시 인수할 기존 Route53 A alias 의 대상(ALB) 조회.
-# LBC 로 생성된 application ALB 만 고르도록 EKS 클러스터+namespace:Ingress 태그로 필터한다
-# (GitLab ALB 등 동일 계정의 다른 ALB 와 구분).
+# LBC 로 생성된 application ALB 만 고르도록 LBC 기본 ALB 태그로 필터한다
+# (elbv2.k8s.aws/cluster + ingress.k8s.aws/stack = <namespace>/<ingress-name>).
+# GitLab ALB 등 동일 계정의 다른 ALB 와 구분된다.
 data "aws_lb" "app" {
   count = var.frontend_dns_takeover ? 1 : 0
 
   tags = {
-    "elbv2.k8s.aws/cluster"   = "${var.project_name}-${var.environment}-eks"
-    "elbv2.k8s.aws/namespace" = "devflow:devflow-ingress"
+    "elbv2.k8s.aws/cluster" = "${var.project_name}-${var.environment}-eks"
+    "ingress.k8s.aws/stack" = "devflow/devflow-ingress"
   }
 }
 
@@ -262,4 +263,15 @@ resource "aws_iam_role_policy" "gitlab_eks_describe" {
       }
     ]
   })
+}
+
+module "github_actions_iam" {
+  source = "../../modules/github-actions-iam"
+
+  project_name               = var.project_name
+  environment                = var.environment
+  github_repository          = var.github_repository
+  github_environment         = var.github_environment
+  s3_bucket_arn              = module.frontend_hosting.s3_bucket_arn
+  cloudfront_distribution_id = module.frontend_hosting.cloudfront_distribution_id
 }
