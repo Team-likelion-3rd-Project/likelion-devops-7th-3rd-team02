@@ -18,6 +18,11 @@ backend:
     springProfile: "dev"
     serverPort: "8080"
     jwtExpiration: "3600000"
+    # 그 밖의 Backend 환경변수 (비밀값은 backend-secret 에 둔다)
+    env: {}
+  serviceAccount:
+    # IRSA: 첨부파일 S3 접근용 IAM Role ARN (비우면 annotation 없음)
+    roleArn: ""
   autoscaling:
     minReplicas: 2
     maxReplicas: 4

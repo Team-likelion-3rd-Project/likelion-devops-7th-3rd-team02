@@ -14,3 +14,6 @@ data:
   SERVER_PORT: {{ .Values.backend.config.serverPort | quote }}
   DB_URL: {{ .Values.backend.config.dbUrl | quote }}
   JWT_EXPIRATION: {{ .Values.backend.config.jwtExpiration | quote }}
+  {{- range $key, $value := .Values.backend.config.env }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
