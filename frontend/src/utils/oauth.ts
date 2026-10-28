@@ -2,11 +2,8 @@
 
 export type OAuthProvider = 'github' | 'google'
 
-// 버튼은 axios 호출이 아니라 페이지 이동이다. 목 모드는 Backend가 없으니 콜백 화면으로 바로 보낸다.
-export const oauthStartUrl = (provider: OAuthProvider) =>
-  import.meta.env.MODE === 'mock'
-    ? `/oauth/callback?code=mock-${provider}`
-    : `/oauth2/authorization/${provider}`
+// 버튼은 axios 호출이 아니라 페이지 이동이다. Backend가 제공자 화면으로 보낸 뒤 /oauth/callback으로 돌려보낸다.
+export const oauthStartUrl = (provider: OAuthProvider) => `/oauth2/authorization/${provider}`
 
 // 콜백 ?error= 값은 아래 4개뿐이다 (Backend 확정). 사용자 문구는 URL에 넣지 않고 여기서 정한다.
 const OAUTH_ERROR_MESSAGE: Record<string, string> = {

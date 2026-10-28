@@ -2,7 +2,7 @@ import api from './axios'
 import type { ApiResponse } from '../types/api'
 import type { Incident, IncidentStatus, MyIncidentListResponse } from '../types/incident'
 
-// 설계서 6.9 (확정). Backend 구현 전에는 목 모드(npm run dev:mock)로 확인한다.
+// 설계서 6.9 (확정)
 export const getIncidents = (projectId: number | string) =>
   api.get<ApiResponse<Incident[]>>(`/projects/${projectId}/incidents`)
 
