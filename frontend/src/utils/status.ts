@@ -86,7 +86,8 @@ export const INCIDENT_SEVERITY: Record<IncidentSeverity, StatusMeta> = {
 // 파드 상태는 Kubernetes 표기를 그대로 보여주고 색만 나눈다.
 export const podStatusTone = (status: string): BadgeTone => {
   if (status === 'Running' || status === 'Succeeded') return 'ok'
-  if (status === 'Pending' || status === 'ContainerCreating') return 'warn'
+  // Terminating: 삭제 중인 Pod (Backend #64). 롤아웃·장애 복구 중에 잠깐 보이는 정상 과정이라 경고로 둔다.
+  if (status === 'Pending' || status === 'ContainerCreating' || status === 'Terminating') return 'warn'
   if (status === 'Unknown') return 'muted'
   return 'err'
 }

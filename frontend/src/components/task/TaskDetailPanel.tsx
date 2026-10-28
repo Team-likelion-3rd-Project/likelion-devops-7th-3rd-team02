@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 
 import Panel from '../common/Panel'
 import StatusBadge from '../common/StatusBadge'
+import TaskAttachments from './TaskAttachments'
 import { buttonClass, focusRing } from '../common/styles'
 import { TASK_STATUS } from '../../utils/status'
 import type { Task } from '../../types/task'
@@ -16,14 +17,20 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
   )
 }
 
-// 설계서 4.5 오른쪽 상세 패널: 제목, 상태, 설명, 담당자, 수정 버튼
-// 삭제는 수정 모달에서 한다. 상태 변경 이력은 표시하지 않는다. 닫기(X), Esc, 같은 카드 다시 선택으로 닫는다.
+// 설계서 4.5 오른쪽 상세 패널: 제목, 상태, 설명, 담당자, 수정 버튼, 첨부파일
+// 업무 삭제는 수정 모달에서 한다. 상태 변경 이력은 표시하지 않는다. 닫기(X), Esc, 같은 카드 다시 선택으로 닫는다.
 function TaskDetailPanel({
+  projectId,
   task,
+  currentUserId,
+  isOwner,
   onEdit,
   onClose,
 }: {
+  projectId: number
   task: Task
+  currentUserId: number | undefined
+  isOwner: boolean
   onEdit: () => void
   onClose: () => void
 }) {
@@ -59,6 +66,17 @@ function TaskDetailPanel({
         <button type="button" onClick={onEdit} className={`${buttonClass} w-full`}>
           수정
         </button>
+
+        <div className="border-t border-line2 pt-3">
+          {/* 다른 업무를 고르면 올리는 중·삭제 확인 상태를 새로 시작한다 */}
+          <TaskAttachments
+            key={task.id}
+            projectId={projectId}
+            taskId={task.id}
+            currentUserId={currentUserId}
+            isOwner={isOwner}
+          />
+        </div>
       </div>
     </Panel>
   )
