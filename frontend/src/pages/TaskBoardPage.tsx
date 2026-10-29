@@ -166,7 +166,10 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
 
         {selectedTask && (
           <TaskDetailPanel
+            projectId={projectId}
             task={selectedTask}
+            currentUserId={currentUser?.userId}
+            isOwner={isProjectOwner(currentProject, currentUser?.userId)}
             onEdit={() => setOpenModal('edit')}
             onClose={closeDetail}
           />
