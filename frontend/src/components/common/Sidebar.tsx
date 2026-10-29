@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ChevronRight, TriangleAlert } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronRight, TriangleAlert, X } from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 
 import logoMark from '../../assets/logo-mark.svg'
@@ -9,7 +9,6 @@ import MemberModal from '../project/MemberModal'
 import ThemeToggle from './ThemeToggle'
 import { useIncidentContext } from '../../hooks/useIncidentContext'
 import { useProjectContext } from '../../hooks/useProjectContext'
-import { useProjectMembers } from '../../hooks/useProjectMembers'
 import { clearAuthStorage } from '../../utils/authStorage'
 import { isProjectOwner, projectRoleLabel } from '../../utils/projectRole'
 
@@ -30,16 +29,22 @@ const dividedClass =
   'relative mt-[13px] before:absolute before:-top-[7px] before:right-0 before:left-0 before:h-px before:bg-line2'
 
 // 설계서 4.1 공통 Layout: 로고(대시보드)와 프로젝트 전환, 팀원 박스, 이동 메뉴, 사용자와 로그아웃
-function Sidebar() {
+// 900px보다 좁은 화면에서는 숨겨 두고, 위쪽 막대의 메뉴 버튼으로 열면 왼쪽 서랍(대화상자)으로 보인다.
+function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const navigate = useNavigate()
-  const { currentProject, currentUser } = useProjectContext()
+  const { currentProject, currentUser, members } = useProjectContext()
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isMemberOpen, setIsMemberOpen] = useState(false)
-  const members = useProjectMembers(currentProject?.id ?? null)
   const { data: myIncidents } = useIncidentContext()
   const openCount = myIncidents?.openCount ?? 0
 
-  const isOwner = isProjectOwner(currentProject, currentUser?.userId)
+  const isOwner = isProjectOwner(currentProject)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  // 서랍을 열면 닫기 버튼에 포커스를 둔다.
+  useEffect(() => {
+    if (isOpen) requestAnimationFrame(() => closeButtonRef.current?.focus())
+  }, [isOpen])
 
   const projectId = currentProject?.id
   const projectMenus = [
@@ -56,7 +61,17 @@ function Sidebar() {
   }
 
   return (
-    <aside className="flex w-[228px] flex-none flex-col gap-5 border-r border-line bg-chrome px-3.5 py-5 max-[900px]:hidden">
+    <aside
+      id="app-sidebar"
+      role={isOpen ? 'dialog' : undefined}
+      aria-modal={isOpen ? true : undefined}
+      aria-label={isOpen ? '메뉴' : undefined}
+      className={`flex w-[228px] flex-none flex-col gap-5 border-r border-line bg-chrome px-3.5 py-5 ${
+        isOpen
+          ? 'max-[900px]:fixed max-[900px]:inset-y-0 max-[900px]:left-0 max-[900px]:z-40 max-[900px]:overflow-y-auto max-[900px]:shadow-[4px_0_24px_rgba(22,27,38,0.18)]'
+          : 'max-[900px]:hidden'
+      }`}
+    >
       <div className="flex flex-col gap-2">
         {/* 맨 윗줄은 모든 프로젝트에 걸친 영역: 로고(대시보드), 전체 장애 (설계서 4.1) */}
         <div className="flex items-center justify-between gap-2">
@@ -70,27 +85,42 @@ function Sidebar() {
             <img src={logoMark} alt="" className="h-[34px] w-[34px]" />
           </Link>
 
-          {/* 확인이 필요한 장애가 있을 때만 숫자 배지를 보여준다. */}
-          <NavLink
-            to="/incidents"
-            aria-label={openCount > 0 ? `전체 장애, 확인 필요 ${openCount}건` : '전체 장애'}
-            title="전체 장애"
-            className={({ isActive }) =>
-              `relative flex h-[34px] w-[34px] flex-none items-center justify-center rounded-lg ${focusRing} ${
-                isActive ? 'bg-accent-bg text-accent' : openCount > 0 ? 'text-err hover:bg-hover' : 'text-muted hover:bg-hover'
-              }`
-            }
-          >
-            <TriangleAlert aria-hidden="true" size={19} />
-            {openCount > 0 && (
-              <span
-                aria-hidden="true"
-                className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-err px-1 text-[11px] font-bold text-white"
+          <span className="flex items-center gap-1">
+            {/* 확인이 필요한 장애가 있을 때만 숫자 배지를 보여준다. */}
+            <NavLink
+              to="/incidents"
+              aria-label={openCount > 0 ? `전체 장애, 확인 필요 ${openCount}건` : '전체 장애'}
+              title="전체 장애"
+              className={({ isActive }) =>
+                `relative flex h-[34px] w-[34px] flex-none items-center justify-center rounded-lg ${focusRing} ${
+                  isActive ? 'bg-accent-bg text-accent' : openCount > 0 ? 'text-err hover:bg-hover' : 'text-muted hover:bg-hover'
+                }`
+              }
+            >
+              <TriangleAlert aria-hidden="true" size={19} />
+              {openCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-err px-1 text-[11px] font-bold text-white"
+                >
+                  {openCount > 99 ? '99+' : openCount}
+                </span>
+              )}
+            </NavLink>
+
+            {/* 좁은 화면에서 서랍으로 열렸을 때만 보인다 */}
+            {isOpen && (
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={onClose}
+                aria-label="메뉴 닫기"
+                className={`flex h-[34px] w-[34px] flex-none cursor-pointer items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-ink min-[901px]:hidden ${focusRing}`}
               >
-                {openCount > 99 ? '99+' : openCount}
-              </span>
+                <X aria-hidden="true" size={18} />
+              </button>
             )}
-          </NavLink>
+          </span>
         </div>
 
         {/* 여기부터 선택한 프로젝트 영역 */}
@@ -105,10 +135,10 @@ function Sidebar() {
             className={`flex cursor-pointer items-center justify-between gap-2 rounded-[9px] border border-line2 px-3 py-2 text-[12.5px] text-muted hover:bg-hover ${focusRing}`}
           >
             <span className="truncate">
-              내 역할: {projectRoleLabel(currentProject, currentUser?.userId)}
+              내 역할: {projectRoleLabel(currentProject)}
             </span>
             <span className="flex flex-none items-center">
-              {members.members.length > 0 ? `팀원 ${members.members.length}명` : '팀원 보기'}
+              {members.length > 0 ? `팀원 ${members.length}명` : '팀원 보기'}
               <ChevronRight aria-hidden="true" size={14} />
             </span>
           </button>
@@ -168,11 +198,7 @@ function Sidebar() {
         <MemberModal
           project={currentProject}
           isOwner={isOwner}
-          onClose={() => {
-            setIsMemberOpen(false)
-            // 모달에서 팀원을 추가했을 수 있으니 팀원 수를 다시 불러온다.
-            members.reload()
-          }}
+          onClose={() => setIsMemberOpen(false)}
         />
       )}
 

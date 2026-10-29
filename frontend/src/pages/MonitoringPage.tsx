@@ -17,7 +17,6 @@ import { acknowledgeIncident, resolveIncident, updateIncidentAssignee } from '..
 import { useInfraData } from '../hooks/useInfraData'
 import { useMonitoringData } from '../hooks/useMonitoringData'
 import { useProjectContext } from '../hooks/useProjectContext'
-import { useProjectMembers } from '../hooks/useProjectMembers'
 import { formatClock, isStale } from '../utils/date'
 import { CLOUD_NOT_CONNECTED } from '../utils/error'
 import { notifyIncidentsChanged } from '../utils/monitoring'
@@ -46,9 +45,8 @@ function MonitoringContent({ projectId }: { projectId: number }) {
     pods,
     collectedAt,
   } = useMonitoringData(projectId)
-  const { members } = useProjectMembers(projectId)
-  const { currentProject, currentUser } = useProjectContext()
-  const canConnect = isProjectOwner(currentProject, currentUser?.userId)
+  const { currentProject, members } = useProjectContext()
+  const canConnect = isProjectOwner(currentProject)
 
   const [view, setView] = useState<View>('app')
   const infra = useInfraData(projectId, env, view === 'infra' && !hasNoEnvironment && environments.data !== null)

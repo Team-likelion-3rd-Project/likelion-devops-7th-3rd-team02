@@ -5,6 +5,7 @@ import { useMatch } from 'react-router-dom'
 import ProjectContext from './ProjectContext'
 import { createProject as createProjectApi } from '../api/projectApi'
 import { useProjectList } from '../hooks/useProjectList'
+import { useProjectMembers } from '../hooks/useProjectMembers'
 import type { ProjectCreateRequest } from '../types/project'
 
 // 마지막으로 본 프로젝트를 기억해 다시 들어오면 그 프로젝트로 연다 (설계서 4.1).
@@ -62,15 +63,15 @@ function ProjectProvider({ children }: { children: ReactNode }) {
       ? findProject(urlProjectId)
       : (findProject(selectedProjectId) ?? projectList[0] ?? null)
 
+  // 팀원 목록은 화면마다 따로 부르지 않고 여기서 한 번 받는다.
+  const members = useProjectMembers(currentProject?.id ?? null)
+
   // 저장소 연결 호출은 프로젝트 만들기 모달 단계에서 붙인다 (설계서 3.3).
   const createProject = async (data: ProjectCreateRequest) => {
     const response = await createProjectApi(data)
     const project = response.data.data
 
-    setProjectList((prevProjects) => [
-      { ...project, role: project.role ?? 'OWNER' },
-      ...prevProjects,
-    ])
+    setProjectList((prevProjects) => [project, ...prevProjects])
 
     return project
   }
@@ -85,6 +86,10 @@ function ProjectProvider({ children }: { children: ReactNode }) {
         isLoading,
         error,
         createProject,
+        members: members.members,
+        isMembersLoading: members.isLoading,
+        membersError: members.error,
+        reloadMembers: members.reload,
       }}
     >
       {children}

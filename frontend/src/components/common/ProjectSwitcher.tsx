@@ -15,8 +15,7 @@ const itemClass = `flex w-full cursor-pointer items-center gap-2 rounded-[7px] p
 function ProjectSwitcher() {
   const navigate = useNavigate()
   const sectionMatch = useMatch('/projects/:projectId/:section')
-  const { projectList, currentProject, currentUser, selectProject, isLoading } =
-    useProjectContext()
+  const { projectList, currentProject, selectProject, isLoading } = useProjectContext()
 
   const [isOpen, setIsOpen] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -131,7 +130,7 @@ function ProjectSwitcher() {
                         {project.name}
                       </span>
                       <span className="flex-none text-[12px] font-normal text-muted">
-                        {projectRoleLabel(project, currentUser?.userId)}
+                        {projectRoleLabel(project)}
                       </span>
                     </button>
                   </li>

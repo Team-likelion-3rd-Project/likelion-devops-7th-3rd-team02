@@ -1,7 +1,7 @@
-// 설계서 6.8 Kubernetes·모니터링 응답. 필드명은 Backend 확정 전 가정이다.
+// 설계서 6.8 Kubernetes·모니터링 응답 (Backend 확정).
 // 세 응답 모두 collectedAt을 포함한다 (확정).
 
-// 허용 range 값은 Backend 확인 전 (10.2). 화면은 1시간, 6시간, 24시간 (설계서 3.8)
+// 기간: 1시간, 6시간, 24시간 (설계서 3.8, Backend 확정)
 export type MonitoringRange = '1h' | '6h' | '24h'
 
 // range를 주면 CPU·메모리·오류율·응답 시간이 시계열로 온다 (확정)

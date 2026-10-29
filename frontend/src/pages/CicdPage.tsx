@@ -25,8 +25,8 @@ function CicdContent({ projectId }: { projectId: number }) {
     setDeploymentPage,
     collectedAt,
   } = useCicdData(projectId)
-  const { currentProject, currentUser } = useProjectContext()
-  const isOwner = isProjectOwner(currentProject, currentUser?.userId)
+  const { currentProject } = useProjectContext()
+  const isOwner = isProjectOwner(currentProject)
 
   // 파이프라인(C1)은 연결된 GitHub 저장소의 Actions 실행 기록이라, 연결이 없다고 확인되면 안내만 표시한다 (설계서 9.7).
   // 배포 이력(D1)은 CI가 Webhook(D3)으로 보내므로 저장소 연결과 무관하게 표시한다.

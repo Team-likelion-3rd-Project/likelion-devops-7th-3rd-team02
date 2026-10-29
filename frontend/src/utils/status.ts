@@ -17,7 +17,7 @@ export const TASK_STATUS: Record<TaskStatus, StatusMeta> = {
   DONE: { label: '완료', tone: 'ok' },
 }
 
-// 시안 표기: 성공 / 실패. 상태 값은 Backend 확정 전 가정 (types/deployment.ts)
+// 시안 표기: 성공 / 실패 (상태 값은 Backend 확정, types/deployment.ts)
 export const DEPLOYMENT_STATUS: Record<DeploymentStatus, StatusMeta> = {
   SUCCESS: { label: '성공', tone: 'ok' },
   FAILED: { label: '실패', tone: 'err' },
@@ -53,7 +53,7 @@ export const ENVIRONMENT_REASON: Record<EnvironmentReason, string> = {
   NOT_DEPLOYED: '아직 배포 기록이 없어요.',
 }
 
-// 파이프라인 상태 (시안 이력 표: 진행 중 / 성공 / 실패). 상태 값은 확정 전 가정 (types/pipeline.ts)
+// 파이프라인 상태 (시안 이력 표: 진행 중 / 성공 / 실패). GitHub Actions 상태를 Backend가 이 값으로 바꿔 준다
 export const PIPELINE_STATUS: Record<PipelineStatus, StatusMeta> = {
   RUNNING: { label: '진행 중', tone: 'info' },
   SUCCESS: { label: '성공', tone: 'ok' },
@@ -76,7 +76,7 @@ export const INCIDENT_STATUS: Record<IncidentStatus, StatusMeta> = {
   RESOLVED: { label: '해결됨', tone: 'ok' },
 }
 
-// 장애 심각도 (시안: 경고, 긴급). 값은 확정 전 가정 (types/incident.ts)
+// 장애 심각도 (시안: 경고, 긴급). 값은 Backend 확정 (types/incident.ts)
 export const INCIDENT_SEVERITY: Record<IncidentSeverity, StatusMeta> = {
   CRITICAL: { label: '긴급', tone: 'err' },
   WARNING: { label: '경고', tone: 'warn' },
