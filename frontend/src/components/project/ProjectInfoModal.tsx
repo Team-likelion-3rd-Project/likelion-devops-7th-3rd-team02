@@ -15,7 +15,7 @@ import type { ProjectListItem } from '../../types/project'
 const muted = 'text-muted'
 
 // 설계서 4.4: 대시보드의 "프로젝트 정보"로 연다. 다른 곳에서 말줄임된 이름과 설명을 여기서 모두 보여준다.
-// 프로젝트 수정·삭제는 범위 확정 전이라 버튼을 두지 않는다 (설계서 1.3).
+// 프로젝트 수정·삭제는 Backend API가 없어(P4·P5 미구현) 버튼을 두지 않는다 (설계서 1.3).
 function ProjectInfoModal({
   project,
   onClose,

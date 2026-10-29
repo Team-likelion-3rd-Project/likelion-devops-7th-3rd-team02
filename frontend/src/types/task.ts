@@ -12,7 +12,7 @@ export interface Task {
   updatedAt: string
 }
 
-// PATCH /projects/{projectId}/tasks/{taskId} 제목·내용 수정 (설계서 4.6, 6.4 계획 P0)
+// PATCH /projects/{projectId}/tasks/{taskId} 제목·내용 수정 (설계서 4.6, 6.4, Backend T4)
 export interface TaskUpdateRequest {
   title: string
   description?: string
