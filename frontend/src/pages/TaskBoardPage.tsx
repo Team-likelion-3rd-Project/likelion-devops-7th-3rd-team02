@@ -10,7 +10,6 @@ import TaskDetailPanel from '../components/task/TaskDetailPanel'
 import TaskEditModal from '../components/task/TaskEditModal'
 import TaskFilterBar from '../components/task/TaskFilterBar'
 import { useProjectContext } from '../hooks/useProjectContext'
-import { useProjectMembers } from '../hooks/useProjectMembers'
 import { TASK_PAGE_SIZE, useProjectTasks } from '../hooks/useProjectTasks'
 import { isProjectOwner } from '../utils/projectRole'
 
@@ -18,8 +17,7 @@ type OpenModal = 'create' | 'edit' | null
 
 // 설계서 4.5 작업 보드
 function TaskBoardContent({ projectId }: { projectId: number }) {
-  const { currentProject, currentUser } = useProjectContext()
-  const { members } = useProjectMembers(projectId)
+  const { currentProject, currentUser, members } = useProjectContext()
   const {
     tasks,
     totalCount,
@@ -169,7 +167,7 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
             projectId={projectId}
             task={selectedTask}
             currentUserId={currentUser?.userId}
-            isOwner={isProjectOwner(currentProject, currentUser?.userId)}
+            isOwner={isProjectOwner(currentProject)}
             onEdit={() => setOpenModal('edit')}
             onClose={closeDetail}
           />
@@ -191,7 +189,7 @@ function TaskBoardContent({ projectId }: { projectId: number }) {
           task={selectedTask}
           members={members}
           canDelete={
-            isProjectOwner(currentProject, currentUser?.userId) ||
+            isProjectOwner(currentProject) ||
             (selectedTask.assigneeId !== null && selectedTask.assigneeId === currentUser?.userId)
           }
           onSaved={reload}

@@ -6,7 +6,7 @@ import FormField, { FormError, formControlClass } from '../common/FormField'
 import { EmptyState, ErrorMessage, Loading } from '../common/PanelState'
 import { buttonClass, primaryButtonClass } from '../common/styles'
 import { addMember } from '../../api/memberApi'
-import { useProjectMembers } from '../../hooks/useProjectMembers'
+import { useProjectContext } from '../../hooks/useProjectContext'
 import { getErrorMessage } from '../../utils/error'
 import { PROJECT_ROLE_LABEL } from '../../utils/projectRole'
 import type { ProjectListItem } from '../../types/project'
@@ -22,7 +22,13 @@ function MemberModal({
   isOwner: boolean
   onClose: () => void
 }) {
-  const { members, isLoading, error, reload } = useProjectMembers(project.id)
+  // 팀원을 추가하면 공용 목록을 다시 불러와 사이드바 팀원 수도 함께 바뀐다.
+  const {
+    members,
+    isMembersLoading: isLoading,
+    membersError: error,
+    reloadMembers: reload,
+  } = useProjectContext()
 
   const [isAdding, setIsAdding] = useState(false)
   const [email, setEmail] = useState('')

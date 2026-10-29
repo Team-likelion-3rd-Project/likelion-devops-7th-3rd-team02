@@ -6,13 +6,8 @@ export const PROJECT_ROLE_LABEL: Record<ProjectRole, string> = {
   MEMBER: '멤버',
 }
 
-// 내가 이 프로젝트의 OWNER인지. 응답의 role을 쓰고, Backend 반영 전에는 2차 방식(ownerId 비교)으로 대신한다 (설계서 2.3).
-export const isProjectOwner = (project: ProjectListItem | null, userId: number | undefined) => {
-  if (!project) return false
-  if (project.role) return project.role === 'OWNER'
-  return project.ownerId === userId
-}
+// 내가 이 프로젝트의 OWNER인지. 프로젝트 응답의 role을 쓴다 (설계서 2.3, Backend 확정)
+export const isProjectOwner = (project: ProjectListItem | null) => project?.role === 'OWNER'
 
-// 역할 표시: 응답의 role, 없으면 OWNER 판단으로 대신한다.
-export const projectRoleLabel = (project: ProjectListItem, userId: number | undefined) =>
-  PROJECT_ROLE_LABEL[isProjectOwner(project, userId) ? 'OWNER' : 'MEMBER']
+// 역할 표시: 소유자 / 멤버
+export const projectRoleLabel = (project: ProjectListItem) => PROJECT_ROLE_LABEL[project.role]
