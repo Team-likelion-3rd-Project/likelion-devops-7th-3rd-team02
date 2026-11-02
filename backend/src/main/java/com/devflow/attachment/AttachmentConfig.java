@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -12,7 +14,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import java.nio.file.Path;
 import java.time.Clock;
 
-/** devflow.attachment.storage = local(기본) | s3 */
+/** devflow.attachment.storage = memory(기본) | local | s3 */
 @Configuration
 @EnableConfigurationProperties(AttachmentProperties.class)
 public class AttachmentConfig {
@@ -35,6 +37,14 @@ public class AttachmentConfig {
                     S3Presigner.builder().region(region).credentialsProvider(DefaultCredentialsProvider.create()).build(),
                     s3.bucket().trim());
         }
+        if ("memory".equals(properties.storage())) {
+            return new MemoryAttachmentStorage(tokens);
+        }
         return new LocalAttachmentStorage(Path.of(properties.local().dir()), tokens);
+    }
+
+    @Bean
+    public TransactionTemplate attachmentTransactionTemplate(PlatformTransactionManager transactionManager) {
+        return new TransactionTemplate(transactionManager);
     }
 }

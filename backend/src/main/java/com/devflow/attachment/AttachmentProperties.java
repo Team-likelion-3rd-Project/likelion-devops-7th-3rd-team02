@@ -6,7 +6,7 @@ import java.time.Duration;
 
 /**
  * devflow.attachment
- * storage: local(기본, compose·온프렘) | s3(AWS, IRSA 권한)
+ * storage: memory(기본) | local(compose·온프렘) | s3(AWS, IRSA 권한)
  * max-per-task: 업무 하나당 첨부 개수 상한
  * download-url-ttl: 다운로드 주소 유효 시간
  */
@@ -20,7 +20,7 @@ public record AttachmentProperties(
 ) {
 
     public AttachmentProperties {
-        storage = storage == null || storage.isBlank() ? "local" : storage.trim().toLowerCase();
+        storage = storage == null || storage.isBlank() ? "memory" : storage.trim().toLowerCase();
         maxPerTask = maxPerTask == null || maxPerTask <= 0 ? 20 : maxPerTask;
         downloadUrlTtl = downloadUrlTtl == null ? Duration.ofMinutes(5) : downloadUrlTtl;
         local = local == null ? new Local(null) : local;

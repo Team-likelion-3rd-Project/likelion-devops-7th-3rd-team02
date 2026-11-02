@@ -49,6 +49,7 @@ services:
       DEVFLOW_ENCRYPTION_KEY: ${DEVFLOW_ENCRYPTION_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       CACHE_TYPE: ${CACHE_TYPE:-memory}
+      ATTACHMENT_STORAGE: ${ATTACHMENT_STORAGE:-local}
       # 소셜 로그인 (선택). 콜백 주소 http://localhost:3000/login/oauth2/code/{github|google}
       FRONTEND_BASE_URL: http://localhost:3000
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}

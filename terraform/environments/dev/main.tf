@@ -275,3 +275,22 @@ module "github_actions_iam" {
   s3_bucket_arn              = module.frontend_hosting.s3_bucket_arn
   cloudfront_distribution_id = module.frontend_hosting.cloudfront_distribution_id
 }
+
+module "attachment_storage" {
+  source = "../../modules/attachment-storage"
+
+  project_name      = var.project_name
+  environment       = var.environment
+  oidc_provider_arn = module.eks.oidc_provider_arn
+  oidc_issuer_url   = module.eks.oidc_provider_url
+}
+
+module "cloud_readonly_iam" {
+  source = "../../modules/cloud-readonly-iam"
+
+  project_name           = var.project_name
+  environment            = var.environment
+  backend_irsa_role_arn  = module.attachment_storage.backend_irsa_role_arn
+  backend_irsa_role_name = module.attachment_storage.backend_irsa_role_name
+  external_id            = var.cloud_readonly_external_id
+}

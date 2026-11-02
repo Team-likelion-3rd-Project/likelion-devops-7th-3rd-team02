@@ -21,7 +21,7 @@ spring:
   # 업무 첨부파일 업로드 크기 (A2). 넘으면 413 ATTACHMENT_TOO_LARGE
   servlet:
     multipart:
-      max-file-size: ${ATTACHMENT_MAX_FILE_SIZE:10MB}
+      max-file-size: ${ATTACHMENT_MAX_FILE_SIZE:${ATTACHMENT_MAX_FILE_SIZE_MB:10}MB}
       max-request-size: ${ATTACHMENT_MAX_REQUEST_SIZE:11MB}
 
   data:
@@ -132,9 +132,9 @@ devflow:
     encryption-key: ${DEVFLOW_ENCRYPTION_KEY:}
 
   # 업무 첨부파일 (Backend-API-구현-목록 15장)
-  # storage: local(기본, compose·온프렘 — 다운로드는 Backend 서명 주소) | s3(AWS — presigned URL, IRSA 권한)
+  # storage: memory(기본, 로컬) | local(compose·온프렘 — 다운로드는 Backend 서명 주소) | s3(AWS — presigned URL, IRSA 권한)
   attachment:
-    storage: ${ATTACHMENT_STORAGE:local}
+    storage: ${ATTACHMENT_STORAGE:memory}
     max-per-task: ${ATTACHMENT_MAX_PER_TASK:20}
     download-url-ttl: ${ATTACHMENT_DOWNLOAD_URL_TTL:5m}
     local:
@@ -142,7 +142,7 @@ devflow:
       dir: ${ATTACHMENT_LOCAL_DIR:}
     s3:
       bucket: ${ATTACHMENT_S3_BUCKET:}
-      region: ${ATTACHMENT_S3_REGION:}
+      region: ${ATTACHMENT_S3_REGION:ap-northeast-1}
 
   # 소셜 로그인 (X1~X3). client-id·secret이 비어 있는 제공자는 비활성(버튼을 누르면 error=oauth_failed)
   # 콜백 주소: {FRONTEND_BASE_URL}/login/oauth2/code/{github|google} 를 각 OAuth App에 등록

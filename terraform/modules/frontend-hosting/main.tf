@@ -129,6 +129,11 @@ resource "aws_cloudfront_distribution" "frontend" {
     domain_name = var.alb_origin_hostname
     origin_id   = "alb-backend"
 
+    custom_header {
+      name  = "X-Forwarded-Host"
+      value = var.application_domain
+    }
+
     custom_origin_config {
       http_port              = 80
       https_port             = 443

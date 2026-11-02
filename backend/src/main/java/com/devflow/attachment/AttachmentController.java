@@ -2,6 +2,10 @@ package com.devflow.attachment;
 
 import com.devflow.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /** 업무 첨부파일 A1~A4 (Backend-API-구현-목록 15장) */
@@ -32,6 +37,23 @@ public class AttachmentController {
             @RequestPart("file") MultipartFile file) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("첨부파일을 올렸습니다.",
                 attachments.upload(userId(authentication), projectId, taskId, file)));
+    }
+
+    @GetMapping("/{attachmentId}")
+    public ResponseEntity<InputStreamResource> downloadFile(
+            Authentication authentication, @PathVariable Long projectId, @PathVariable Long taskId,
+            @PathVariable Long attachmentId) {
+        AttachmentDtos.AttachmentDownload file =
+                attachments.downloadFile(userId(authentication), projectId, taskId, attachmentId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(file.contentType()))
+                .contentLength(file.size())
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(file.fileName(), StandardCharsets.UTF_8)
+                        .build().toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(new InputStreamResource(file.content()));
     }
 
     @GetMapping("/{attachmentId}/download")

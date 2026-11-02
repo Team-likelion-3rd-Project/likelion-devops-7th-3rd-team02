@@ -27,12 +27,14 @@ backend:
       CACHE_TYPE: "memory"
       # 클러스터 내부·Tailscale Egress Service(ClusterIP 사설 주소)의 Prometheus를 등록하려면 true.
       # 루프백·링크 로컬·메타데이터(169.254.169.254) 주소는 이 값과 상관없이 항상 차단된다.
-      DEVFLOW_CLOUD_ALLOW_PRIVATE_NETWORK: "true"
+      DEVFLOW_CLOUD_ALLOW_PRIVATE_NETWORK: "false"
       GITHUB_OAUTH_CLIENT_ID: "Ov23li29AtY1YkSadIUk"
       GOOGLE_OAUTH_CLIENT_ID: "1056613756274-r3m0a6bljqr5sk2hkkpd2281qusglitn.apps.googleusercontent.com"
       ATTACHMENT_STORAGE: "s3"
+      # 실제 버킷 이름은 ArgoCD 배포 시 주입("<ATTACHMENT_BUCKET>" placeholder 유지, HEAD의 backend.attachment.bucket 동일 값)
       ATTACHMENT_S3_BUCKET: "<ATTACHMENT_BUCKET>"
       ATTACHMENT_S3_REGION: "ap-northeast-1"
+      ATTACHMENT_MAX_FILE_SIZE_MB: "10"
   serviceAccount:
     roleArn: "<BACKEND_IRSA_ROLE_ARN>"
   autoscaling:

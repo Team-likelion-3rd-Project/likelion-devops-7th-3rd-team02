@@ -21,3 +21,6 @@ export interface AttachmentDownload {
 // Backend 제한 (15.1): 파일당 10MB, 업무당 20개
 export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024
 export const ATTACHMENT_MAX_PER_TASK = 20
+
+// feature/S3_Attachment의 기존 참조(useTaskAttachments)와의 호환 별칭
+export type TaskAttachment = Attachment

@@ -15,3 +15,13 @@ output "bucket_regional_domain_name" {
   description = "Attachment bucket regional domain name"
   value       = aws_s3_bucket.attachment.bucket_regional_domain_name
 }
+
+output "backend_irsa_role_arn" {
+  description = "IAM Role ARN trusted by the DevFlow Backend ServiceAccount (Helm value backend.irsa.roleArn)"
+  value       = aws_iam_role.backend_attachments.arn
+}
+
+output "backend_irsa_role_name" {
+  description = "Name of the IAM role used by the DevFlow Backend for attachment bucket access"
+  value       = aws_iam_role.backend_attachments.name
+}
