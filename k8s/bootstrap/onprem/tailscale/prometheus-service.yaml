@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: onprem-prometheus-tailnet
+  namespace: monitoring
+  annotations:
+    tailscale.com/hostname: devflow-onprem-prometheus
+    tailscale.com/tags: tag:devflow-onprem-prometheus
+spec:
+  type: LoadBalancer
+  loadBalancerClass: tailscale
+  allocateLoadBalancerNodePorts: false
+  selector:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/instance: onprem-monitoring
+    app.kubernetes.io/name: prometheus
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
