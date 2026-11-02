@@ -8,6 +8,8 @@ resources:
   - deployment-record-job.yaml
 images:
   - name: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02-frontend
-    digest: sha256:1c20444ca44a6c5518c5487ea77fc85da88aec2d10052787a469ebd8fd82ed57
+    newName: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02/frontend
+    digest: sha256:4739dea8cd614c81ef6ba1833b192566144b6b603bf3db7dcc8b325d2a16c06c
   - name: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02-backend
-    digest: sha256:4de513904cabd4c1746dfbf1d6365402d1b993ec690da99da880b46ed5c6e7e4
+    newName: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02/backend
+    digest: sha256:5e10574f26b8a8013f6b7331195d362bb5d5f78acea49f13e30554c5f9311dd1

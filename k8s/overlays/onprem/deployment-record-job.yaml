@@ -44,9 +44,9 @@ spec:
                   name: devflow-project-webhooks
                   key: deployment-token
             - name: RELEASE_COMMIT_SHA
-              value: "50295a12a131cc6d2642590880c8a4299e94cf70"
+              value: "9f72deab85343bfc99f0abdc14ac7e1547dc22d6"
             - name: RELEASE_IMAGE_DIGEST
-              value: "sha256:4de513904cabd4c1746dfbf1d6365402d1b993ec690da99da880b46ed5c6e7e4"
+              value: "sha256:5e10574f26b8a8013f6b7331195d362bb5d5f78acea49f13e30554c5f9311dd1"
           command: ["/bin/sh", "-ec"]
           args:
             - |
@@ -63,7 +63,7 @@ spec:
                 > /tmp/readiness.json
               grep -Eq '"status"[[:space:]]*:[[:space:]]*"UP"' /tmp/readiness.json
 
-              printf '{"environment":"dev","service":"backend","commitSha":"%s","commitMessage":"Argo CD PostSync: validated release metadata","imageTag":"%s","imageDigest":"%s","status":"SUCCESS","pipelineId":40428021502}' \
+              printf '{"environment":"dev","service":"backend","commitSha":"%s","commitMessage":"Argo CD PostSync: validated release metadata","imageTag":"%s","imageDigest":"%s","status":"SUCCESS","pipelineId":41397977596}' \
                 "$RELEASE_COMMIT_SHA" "$RELEASE_IMAGE_DIGEST" \
                 "$RELEASE_IMAGE_DIGEST" > /tmp/deployment.json
 
