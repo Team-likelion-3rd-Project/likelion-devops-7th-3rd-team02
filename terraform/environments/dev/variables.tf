@@ -126,3 +126,8 @@ variable "github_environment" {
   type        = string
   default     = "dev"
 }
+
+variable "cloud_readonly_external_id" {
+  description = "sts:ExternalId issued by DevFlow when the project cloud environment is registered (CL2 screen). Required input for the demo read-only role trust policy; no default so a plan without it fails instead of building a loose trust."
+  type        = string
+}

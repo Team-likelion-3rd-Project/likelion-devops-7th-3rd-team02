@@ -15,6 +15,9 @@ locals {
 
   # S3 버킷 이름은 전 세계에서 하나만 쓸 수 있어 계정 ID 를 붙인다.
   bucket_name = "${var.project_name}-${var.environment}-attachment-${data.aws_caller_identity.current.account_id}"
+
+  iam_role_name   = "${var.project_name}-${var.environment}-backend-attachments-role"
+  iam_policy_name = "${var.project_name}-${var.environment}-backend-attachments-policy"
 }
 
 # 사용자 데이터라 객체가 남아 있으면 삭제되지 않게 둔다 (force_destroy = false).
@@ -55,15 +58,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "attachment" {
   }
 }
 
-# 실수로 덮어쓰거나 지운 파일을 되살릴 수 있게 버전 관리를 켠다.
-resource "aws_s3_bucket_versioning" "attachment" {
-  bucket = aws_s3_bucket.attachment.id
-
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
 resource "aws_s3_bucket_lifecycle_configuration" "attachment" {
   bucket = aws_s3_bucket.attachment.id
 
@@ -77,19 +71,59 @@ resource "aws_s3_bucket_lifecycle_configuration" "attachment" {
       days_after_initiation = var.abort_incomplete_multipart_upload_days
     }
   }
+}
 
-  # 덮어쓰거나 지운 파일의 이전 버전은 일정 기간 뒤 정리한다.
-  rule {
-    id     = "expire-noncurrent-versions"
-    status = "Enabled"
+resource "aws_iam_policy" "backend_attachments" {
+  name        = local.iam_policy_name
+  description = "Least-privilege S3 object access for DevFlow Backend attachment upload, download and delete"
 
-    filter {}
+  policy = jsonencode({
+    Version = "2012-10-17"
 
-    noncurrent_version_expiration {
-      noncurrent_days = var.noncurrent_version_expiration_days
-    }
-  }
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        Resource = "${aws_s3_bucket.attachment.arn}/*"
+      }
+    ]
+  })
 
-  # 이전 버전 만료 규칙은 버전 관리가 켜진 뒤에 적용되어야 한다.
-  depends_on = [aws_s3_bucket_versioning.attachment]
+  tags = merge(local.common_tags, {
+    Name = local.iam_policy_name
+  })
+}
+
+resource "aws_iam_role" "backend_attachments" {
+  name = local.iam_role_name
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [{
+      Effect = "Allow"
+
+      Principal = {
+        Federated = var.oidc_provider_arn
+      }
+
+      Action = "sts:AssumeRoleWithWebIdentity"
+
+      Condition = {
+        StringEquals = {
+          "${replace(var.oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:${var.backend_namespace}:${var.backend_service_account}"
+          "${replace(var.oidc_issuer_url, "https://", "")}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+
+  tags = merge(local.common_tags, {
+    Name = local.iam_role_name
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "backend_attachments" {
+  role       = aws_iam_role.backend_attachments.name
+  policy_arn = aws_iam_policy.backend_attachments.arn
 }

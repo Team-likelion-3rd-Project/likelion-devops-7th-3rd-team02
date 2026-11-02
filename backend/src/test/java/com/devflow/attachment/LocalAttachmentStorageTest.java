@@ -31,6 +31,15 @@ class LocalAttachmentStorageTest {
     }
 
     @Test
+    void 없는_파일을_삭제해도_성공이다() {
+        LocalAttachmentStorage storage = new LocalAttachmentStorage(dir,
+                new DownloadTokens("secret-0123456789-0123456789-0123", Clock.systemUTC()));
+
+        storage.delete("projects/1/tasks/2/gone");
+        storage.delete("projects/1/tasks/2/gone");
+    }
+
+    @Test
     void 저장소_밖_경로는_열지_않는다() {
         LocalAttachmentStorage storage = new LocalAttachmentStorage(dir,
                 new DownloadTokens("secret-0123456789-0123456789-0123", Clock.systemUTC()));

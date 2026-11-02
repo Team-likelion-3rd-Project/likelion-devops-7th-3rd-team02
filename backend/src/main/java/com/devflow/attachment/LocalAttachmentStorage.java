@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
@@ -45,8 +46,11 @@ public class LocalAttachmentStorage implements AttachmentStorage {
     public void delete(String key) {
         try {
             Files.deleteIfExists(resolve(key));
+        } catch (NoSuchFileException e) {
+            log.debug("attachment delete, already gone: {}", key);
         } catch (IOException e) {
-            log.warn("attachment delete failed (ignored): {} {}", key, e.getMessage());
+            log.error("attachment delete failed: {}", key, e);
+            throw new BusinessException(ErrorCode.ATTACHMENT_STORAGE_ERROR);
         }
     }
 
@@ -62,6 +66,19 @@ public class LocalAttachmentStorage implements AttachmentStorage {
             throw new BusinessException(ErrorCode.ATTACHMENT_NOT_FOUND);
         }
         return file;
+    }
+
+    @Override
+    public InputStream open(String key) {
+        Path file = file(key);
+        try {
+            return Files.newInputStream(file);
+        } catch (NoSuchFileException e) {
+            throw new BusinessException(ErrorCode.ATTACHMENT_NOT_FOUND);
+        } catch (IOException e) {
+            log.error("attachment open failed: {}", key, e);
+            throw new BusinessException(ErrorCode.ATTACHMENT_STORAGE_ERROR);
+        }
     }
 
     private Path resolve(String key) {

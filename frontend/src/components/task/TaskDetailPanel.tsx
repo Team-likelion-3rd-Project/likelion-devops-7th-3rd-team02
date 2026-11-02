@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import Panel from '../common/Panel'
 import StatusBadge from '../common/StatusBadge'
 import { buttonClass, focusRing } from '../common/styles'
+import TaskAttachments from './TaskAttachments'
 import { TASK_STATUS } from '../../utils/status'
 import type { Task } from '../../types/task'
 
@@ -55,6 +56,8 @@ function TaskDetailPanel({
         <div className="flex flex-col gap-2">
           <DetailRow label="담당자">{task.assigneeName ?? '담당자 없음'}</DetailRow>
         </div>
+
+        <TaskAttachments projectId={task.projectId} taskId={task.id} />
 
         <button type="button" onClick={onEdit} className={`${buttonClass} w-full`}>
           수정

@@ -8,6 +8,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -51,11 +52,26 @@ public class S3AttachmentStorage implements AttachmentStorage {
     }
 
     @Override
+    public InputStream open(String key) {
+        try {
+            return s3.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build());
+        } catch (NoSuchKeyException e) {
+            throw new BusinessException(ErrorCode.ATTACHMENT_NOT_FOUND);
+        } catch (RuntimeException e) {
+            log.error("s3 get failed: {}", key, e);
+            throw new BusinessException(ErrorCode.ATTACHMENT_STORAGE_ERROR);
+        }
+    }
+
+    @Override
     public void delete(String key) {
         try {
             s3.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
+        } catch (NoSuchKeyException e) {
+            log.debug("s3 delete, already gone: {}", key);
         } catch (RuntimeException e) {
-            log.warn("s3 delete failed (ignored): {} {}", key, e.getMessage());
+            log.error("s3 delete failed: {}", key, e);
+            throw new BusinessException(ErrorCode.ATTACHMENT_STORAGE_ERROR);
         }
     }
 

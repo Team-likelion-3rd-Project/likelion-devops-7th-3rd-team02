@@ -54,6 +54,12 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+          {{- with .Values.backend.irsa.roleArn }}
+          volumeMounts:
+            - name: aws-token
+              mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
+              readOnly: true
+          {{- end }}
           envFrom:
             - configMapRef:
                 name: backend-config
@@ -62,6 +68,18 @@ spec:
           env:
             - name: JAVA_TOOL_OPTIONS
               value: "-XX:MaxRAMPercentage=60.0 -XX:+UseContainerSupport"
+            {{- with .Values.backend.irsa.roleArn }}
+            - name: AWS_ROLE_ARN
+              value: {{ . | quote }}
+            - name: AWS_WEB_IDENTITY_TOKEN_FILE
+              value: /var/run/secrets/eks.amazonaws.com/serviceaccount/token
+            - name: AWS_REGION
+              value: ap-northeast-1
+            - name: AWS_DEFAULT_REGION
+              value: ap-northeast-1
+            - name: AWS_STS_REGIONAL_ENDPOINTS
+              value: regional
+            {{- end }}
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
@@ -106,3 +124,13 @@ spec:
                   - /bin/sh
                   - -c
                   - sleep 5
+{{- with .Values.backend.irsa.roleArn }}
+      volumes:
+        - name: aws-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  audience: sts.amazonaws.com
+                  expirationSeconds: 3600
+                  path: token
+{{- end }}

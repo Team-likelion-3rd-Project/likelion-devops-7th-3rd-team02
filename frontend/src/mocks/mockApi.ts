@@ -4,6 +4,7 @@ import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { fetchMockDeploymentPage, fetchMockPipelines } from './cicd'
 import { fetchMockIncidents } from './dashboard'
 import { fetchMockK8sDeployments, fetchMockK8sPods, fetchMockMonitoringSummary } from './monitoring'
+import type { TaskAttachment } from '../types/attachment'
 import type { CloudEnvironment, WebhookTokenSummary, WebhookTokenType } from '../types/cloud'
 import type { Incident } from '../types/incident'
 import type { GithubRepository } from '../types/integration'
@@ -133,6 +134,9 @@ const webhookTokens: Record<number, WebhookTokenSummary[]> = {
   1: [{ type: 'deployment', createdAt: at(60 * 24 * 2), lastUsedAt: at(5) }],
 }
 
+const attachmentRecords: { meta: TaskAttachment; file: Blob }[] = []
+let nextAttachmentId = 1
+
 // ---------- 헬퍼 ----------
 
 const findProject = (projectId: number) => {
@@ -257,6 +261,15 @@ const compareTasks = (sort = 'updatedAt,desc') => (a: Task, b: Task) => {
 const findTask = (projectId: number, taskId: number) => {
   const found = tasks.find((item) => item.id === taskId && item.projectId === projectId)
   if (!found) throw new MockHttpError(404, '업무를 찾을 수 없습니다.', 'TASK_NOT_FOUND')
+  return found
+}
+
+const attachmentsOfTask = (taskId: number) =>
+  attachmentRecords.filter((item) => item.meta.taskId === taskId).map((item) => item.meta)
+
+const findAttachment = (taskId: number, attachmentId: number) => {
+  const found = attachmentRecords.find((item) => item.meta.id === attachmentId && item.meta.taskId === taskId)
+  if (!found) throw new MockHttpError(404, '첨부파일을 찾을 수 없습니다.', 'ATTACHMENT_NOT_FOUND')
   return found
 }
 
@@ -390,6 +403,50 @@ const routes: [string, string, Handler][] = [
       throw new MockHttpError(403, '업무를 삭제할 권한이 없습니다.', 'FORBIDDEN')
     }
     tasks.splice(tasks.indexOf(found), 1)
+    return null
+  }],
+
+  // A1~A4: 업무 첨부파일. 삭제는 올린 사람 또는 OWNER
+  ['get', '/projects/:projectId/tasks/:taskId/attachments', ({ params }) => {
+    findTask(params.projectId, params.taskId)
+    return attachmentsOfTask(params.taskId)
+  }],
+  ['post', '/projects/:projectId/tasks/:taskId/attachments', ({ params, body }) => {
+    findTask(params.projectId, params.taskId)
+    const file = body.file
+    if (!(file instanceof File)) throw new MockHttpError(400, '파일을 읽을 수 없습니다.', 'INVALID_REQUEST')
+    if (file.size === 0) throw new MockHttpError(400, '빈 파일은 올릴 수 없습니다.', 'INVALID_REQUEST')
+    if (file.size > 10 * 1024 * 1024) {
+      throw new MockHttpError(413, '파일은 10MB 이하만 올릴 수 있습니다.', 'ATTACHMENT_TOO_LARGE')
+    }
+    const me = users.find((user) => user.userId === currentUserId)!
+    const id = nextAttachmentId++
+    attachmentRecords.push({
+      meta: {
+        id,
+        taskId: params.taskId,
+        fileName: file.name,
+        contentType: file.type || 'application/octet-stream',
+        size: file.size,
+        uploaderId: me.userId,
+        uploaderName: me.name,
+        createdAt: now(),
+      },
+      file,
+    })
+    return attachmentsOfTask(params.taskId).find((item) => item.id === id)
+  }],
+  ['get', '/projects/:projectId/tasks/:taskId/attachments/:attachmentId', ({ params }) => {
+    findTask(params.projectId, params.taskId)
+    return findAttachment(params.taskId, params.attachmentId).file
+  }],
+  ['delete', '/projects/:projectId/tasks/:taskId/attachments/:attachmentId', ({ params }) => {
+    findTask(params.projectId, params.taskId)
+    const found = findAttachment(params.taskId, params.attachmentId)
+    if (found.meta.uploaderId !== currentUserId && roleOf(params.projectId, currentUserId) !== 'OWNER') {
+      throw new MockHttpError(403, '삭제할 권한이 없습니다.', 'FORBIDDEN')
+    }
+    attachmentRecords.splice(attachmentRecords.indexOf(found), 1)
     return null
   }],
 
@@ -599,7 +656,11 @@ export async function mockAdapter(config: InternalAxiosRequestConfig): Promise<A
       .filter(([, value]) => value !== undefined && value !== null && value !== '')
       .map(([key, value]) => [key, String(value)]),
   )
-  const body: Body = typeof config.data === 'string' && config.data ? JSON.parse(config.data) : {}
+  const body: Body = config.data instanceof FormData
+    ? Object.fromEntries(config.data.entries())
+    : typeof config.data === 'string' && config.data
+      ? JSON.parse(config.data)
+      : {}
 
   const respond = (status: number, data: unknown): AxiosResponse => ({
     data,
@@ -618,6 +679,7 @@ export async function mockAdapter(config: InternalAxiosRequestConfig): Promise<A
   try {
     if (!route) throw new MockHttpError(404, `목 모드에 없는 API입니다: ${method.toUpperCase()} ${path}`, 'MOCK_NOT_FOUND')
     const data = await route.handler({ params: route.params, query, body })
+    if (data instanceof Blob) return respond(200, data)
     return respond(200, { success: true, message: '요청이 성공했습니다.', data })
   } catch (error) {
     if (!(error instanceof MockHttpError)) throw error

@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -40,6 +41,7 @@ public class AttachmentService {
     private final AttachmentProperties properties;
     private final DownloadTokens tokens;
     private final Clock clock;
+    private final TransactionTemplate transactionTemplate;
 
     @Transactional(readOnly = true)
     public List<AttachmentDtos.AttachmentResponse> list(Long userId, Long projectId, Long taskId) {
@@ -50,7 +52,6 @@ public class AttachmentService {
                 .toList();
     }
 
-    @Transactional
     public AttachmentDtos.AttachmentResponse upload(Long userId, Long projectId, Long taskId, MultipartFile file) {
         ProjectMember member = access.getMembership(projectId, userId);
         Task task = task(projectId, taskId);
@@ -72,11 +73,16 @@ public class AttachmentService {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "파일을 읽지 못했습니다.");
         }
         try {
-            TaskAttachment saved = repository.saveAndFlush(new TaskAttachment(
-                    task, member.getUser(), name, type, file.getSize(), key, Times.now(clock)));
-            return AttachmentDtos.AttachmentResponse.from(saved);
+            return transactionTemplate.execute(status -> AttachmentDtos.AttachmentResponse.from(
+                    repository.saveAndFlush(new TaskAttachment(
+                            task, member.getUser(), name, type, file.getSize(), key, Times.now(clock)))));
         } catch (RuntimeException e) {
-            storage.delete(key);
+            try {
+                storage.delete(key);
+            } catch (RuntimeException cleanup) {
+                e.addSuppressed(cleanup);
+                log.warn("attachment cleanup after save failure failed: {}", key, cleanup);
+            }
             throw e;
         }
     }
@@ -88,6 +94,17 @@ public class AttachmentService {
         return new AttachmentDtos.DownloadResponse(
                 storage.downloadUrl(attachment, properties.downloadUrlTtl()).toString(),
                 tokens.expiresAt(properties.downloadUrlTtl()).atZone(Times.SEOUL).toOffsetDateTime());
+    }
+
+    @Transactional(readOnly = true)
+    public AttachmentDtos.AttachmentDownload downloadFile(Long userId, Long projectId, Long taskId, Long attachmentId) {
+        access.checkMember(projectId, userId);
+        TaskAttachment attachment = attachment(projectId, taskId, attachmentId);
+        return new AttachmentDtos.AttachmentDownload(
+                attachment.getOriginalName(),
+                attachment.getContentType(),
+                attachment.getSizeBytes(),
+                storage.open(attachment.getStorageKey()));
     }
 
     @Transactional
@@ -112,7 +129,13 @@ public class AttachmentService {
         }
         repository.deleteAll(attachments);
         repository.flush();
-        attachments.forEach(a -> storage.delete(a.getStorageKey()));
+        attachments.forEach(a -> {
+            try {
+                storage.delete(a.getStorageKey());
+            } catch (RuntimeException e) {
+                log.warn("attachment purge failed, left in storage: {}", a.getStorageKey(), e);
+            }
+        });
     }
 
     /** 로컬 저장소 서명 주소 다운로드 */
