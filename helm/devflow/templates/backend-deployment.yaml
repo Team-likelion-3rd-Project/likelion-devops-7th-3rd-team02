@@ -22,6 +22,8 @@ spec:
       app: backend
   template:
     metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/backend-configmap.yaml") . | sha256sum }}
       labels:
         app: backend
         app.kubernetes.io/name: backend
@@ -54,7 +56,7 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-          {{- with .Values.backend.irsa.roleArn }}
+          {{- with .Values.backend.serviceAccount.roleArn }}
           volumeMounts:
             - name: aws-token
               mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
@@ -68,7 +70,7 @@ spec:
           env:
             - name: JAVA_TOOL_OPTIONS
               value: "-XX:MaxRAMPercentage=60.0 -XX:+UseContainerSupport"
-            {{- with .Values.backend.irsa.roleArn }}
+            {{- with .Values.backend.serviceAccount.roleArn }}
             - name: AWS_ROLE_ARN
               value: {{ . | quote }}
             - name: AWS_WEB_IDENTITY_TOKEN_FILE
@@ -124,7 +126,7 @@ spec:
                   - /bin/sh
                   - -c
                   - sleep 5
-{{- with .Values.backend.irsa.roleArn }}
+{{- with .Values.backend.serviceAccount.roleArn }}
       volumes:
         - name: aws-token
           projected:

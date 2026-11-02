@@ -82,7 +82,7 @@ function DashboardPage() {
       {projectId !== null && (
         <EnvironmentSummary
           projectId={projectId}
-          canConnect={isProjectOwner(currentProject, currentUser?.userId)}
+          canConnect={isProjectOwner(currentProject)}
         />
       )}
 
@@ -108,7 +108,6 @@ function DashboardPage() {
       {isInfoOpen && (
         <ProjectInfoModal
           project={currentProject}
-          userId={currentUser?.userId}
           onClose={() => setIsInfoOpen(false)}
         />
       )}

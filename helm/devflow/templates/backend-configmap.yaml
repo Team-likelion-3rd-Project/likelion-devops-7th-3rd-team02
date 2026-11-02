@@ -14,14 +14,9 @@ data:
   SERVER_PORT: {{ .Values.backend.config.serverPort | quote }}
   DB_URL: {{ .Values.backend.config.dbUrl | quote }}
   JWT_EXPIRATION: {{ .Values.backend.config.jwtExpiration | quote }}
-  {{- with .Values.backend.irsa.roleArn }}
+  {{- with .Values.backend.serviceAccount.roleArn }}
   DEVFLOW_AWS_PRINCIPAL_ARN: {{ . | quote }}
   {{- end }}
   {{- range $key, $value := .Values.backend.config.env }}
   {{ $key }}: {{ $value | quote }}
-  {{- end }}
-  {{- with .Values.backend.attachment.bucket }}
-  ATTACHMENT_S3_BUCKET: {{ . | quote }}
-  ATTACHMENT_STORAGE: {{ $.Values.backend.attachment.storage | default "s3" | quote }}
-  ATTACHMENT_MAX_FILE_SIZE_MB: {{ $.Values.backend.attachment.maxFileSizeMb | default "10" | quote }}
   {{- end }}

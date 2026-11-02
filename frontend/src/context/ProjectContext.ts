@@ -4,6 +4,7 @@ import type {
   ProjectCreateRequest,
   ProjectListItem,
 } from '../types/project'
+import type { ProjectMember } from '../types/member'
 import type { UserMe } from '../types/user'
 
 export interface ProjectContextValue {
@@ -15,6 +16,11 @@ export interface ProjectContextValue {
   isLoading: boolean
   error: string
   createProject: (data: ProjectCreateRequest) => Promise<Project>
+  // 현재 프로젝트의 팀원. 사이드바·작업 보드·모니터링·팀원 모달이 한 번 받아 함께 쓴다.
+  members: ProjectMember[]
+  isMembersLoading: boolean
+  membersError: string
+  reloadMembers: () => void
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null)

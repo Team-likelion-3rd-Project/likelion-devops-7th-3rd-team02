@@ -8,8 +8,8 @@ export interface ProjectListItem {
   ownerId: number
   ownerName: string
   createdAt: string
-  // 현재 사용자의 역할 (설계서 6.2 확정). Backend 반영 전에는 없을 수 있다.
-  role?: ProjectRole
+  // 현재 사용자의 역할 (설계서 6.2, Backend 확정)
+  role: ProjectRole
 }
 
 // GET /projects/{projectId}, POST /projects

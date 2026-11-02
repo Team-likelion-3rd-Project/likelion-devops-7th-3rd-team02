@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { getTasks } from '../api/taskApi'
 import { useAsyncData } from './useAsyncData'
 import { useDebouncedValue } from './useDebouncedValue'
-import { toTaskPage } from '../utils/task'
 import type { TaskListParams, TaskStatus } from '../types/task'
 
 // 설계서 4.5: 한 페이지 12건, 기본 정렬 최근 수정순 (마감일 정렬 없음)
@@ -48,7 +47,7 @@ export function useProjectTasks(projectId: number | null) {
 
   const tasks = useAsyncData(
     () =>
-      getTasks(projectId!, params).then((response) => toTaskPage(response.data.data)),
+      getTasks(projectId!, params).then((response) => response.data.data),
     projectId !== null ? `tasks-${projectId}-${JSON.stringify(params)}` : null,
     '작업 목록을 불러오지 못했습니다.',
   )

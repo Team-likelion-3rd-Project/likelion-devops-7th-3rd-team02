@@ -7,7 +7,7 @@ import Modal from '../common/Modal'
 import { buttonClass, focusRing, textLinkClass } from '../common/styles'
 import { getGithubRepository } from '../../api/integrationApi'
 import { useAsyncData } from '../../hooks/useAsyncData'
-import { useProjectMembers } from '../../hooks/useProjectMembers'
+import { useProjectContext } from '../../hooks/useProjectContext'
 import { formatDate } from '../../utils/date'
 import { isProjectOwner, projectRoleLabel } from '../../utils/projectRole'
 import type { ProjectListItem } from '../../types/project'
@@ -15,18 +15,16 @@ import type { ProjectListItem } from '../../types/project'
 const muted = 'text-muted'
 
 // 설계서 4.4: 대시보드의 "프로젝트 정보"로 연다. 다른 곳에서 말줄임된 이름과 설명을 여기서 모두 보여준다.
-// 프로젝트 수정·삭제는 범위 확정 전이라 버튼을 두지 않는다 (설계서 1.3).
+// 프로젝트 수정·삭제는 Backend API가 없어(P4·P5 미구현) 버튼을 두지 않는다 (설계서 1.3).
 function ProjectInfoModal({
   project,
-  userId,
   onClose,
 }: {
   project: ProjectListItem
-  userId: number | undefined
   onClose: () => void
 }) {
-  const isOwner = isProjectOwner(project, userId)
-  const { members, isLoading: isMemberLoading, error: memberError } = useProjectMembers(project.id)
+  const isOwner = isProjectOwner(project)
+  const { members, isMembersLoading: isMemberLoading, membersError: memberError } = useProjectContext()
 
   // 연결이 없으면 data: null, 조회 실패(현재 Backend 미구현 등)는 error
   const github = useAsyncData(
@@ -76,7 +74,7 @@ function ProjectInfoModal({
 
       <KeyValueList
         items={[
-          { label: '내 역할', value: projectRoleLabel(project, userId) },
+          { label: '내 역할', value: projectRoleLabel(project) },
           { label: '소유자', value: project.ownerName },
           { label: '만든 날', value: formatDate(project.createdAt) },
           {

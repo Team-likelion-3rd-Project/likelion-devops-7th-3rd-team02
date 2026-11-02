@@ -217,12 +217,12 @@ output "github_actions_trust_condition_sub" {
 }
 
 output "attachment_bucket_name" {
-  description = "Private S3 bucket name for task attachments. Helm value backend.attachment.bucket (GitOps per-env values)."
+  description = "Private S3 bucket name for task attachments. Helm value backend.config.env.ATTACHMENT_S3_BUCKET (GitOps per-env values)."
   value       = module.attachment_storage.bucket_name
 }
 
 output "backend_attachments_irsa_role_arn" {
-  description = "Backend IRSA role ARN. Helm value backend.irsa.roleArn (GitOps per-env values). The same value goes to backend.config.env.DEVFLOW_AWS_PRINCIPAL_ARN. terraform -chdir=terraform/environments/dev output -raw backend_attachments_irsa_role_arn"
+  description = "Backend IRSA role ARN. Helm value backend.serviceAccount.roleArn (GitOps per-env values). The same value goes to backend.config.env.DEVFLOW_AWS_PRINCIPAL_ARN. terraform -chdir=terraform/environments/dev output -raw backend_attachments_irsa_role_arn"
   value       = module.attachment_storage.backend_irsa_role_arn
 }
 

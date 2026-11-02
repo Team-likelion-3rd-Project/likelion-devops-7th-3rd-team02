@@ -120,7 +120,7 @@ export const formatSince = (
   return `${formatDayTime(value, now)}부터 ${elapsed}`
 }
 
-// 마지막 수집 시각이 오래됐는지 (설계서 5.5). 기준 시간은 팀과 확정 전이라 5분으로 둔다.
+// 마지막 수집 시각이 오래됐는지 (설계서 5.5). 기준은 5분이다.
 export const STALE_AFTER_MINUTES = 5
 
 export const isStale = (value: string | null | undefined, now: Date = new Date()) => {

@@ -34,8 +34,8 @@ function ConnectionStatus({ connected, label }: { connected: boolean | null; lab
 // 팀원은 읽기 전용이고, 변경·토큰 발급은 OWNER만 한다 (Backend 14.4).
 function SettingsContent({ projectId }: { projectId: number }) {
   const location = useLocation()
-  const { currentProject, currentUser } = useProjectContext()
-  const isOwner = isProjectOwner(currentProject, currentUser?.userId)
+  const { currentProject } = useProjectContext()
+  const isOwner = isProjectOwner(currentProject)
 
   // 다른 화면의 "설정에서 연결하기"는 #cloud처럼 항목을 지정해 들어온다.
   const hashSection = location.hash.slice(1)
