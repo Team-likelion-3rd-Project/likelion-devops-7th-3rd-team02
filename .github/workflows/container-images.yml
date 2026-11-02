@@ -66,8 +66,8 @@ jobs:
           tags: |
             ${{ steps.image.outputs.name }}:${{ steps.image.outputs.short }}
             ${{ steps.image.outputs.name }}:${{ github.sha }}
+            ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
           outputs: ${{ github.event_name == 'pull_request' && format('type=docker,dest={0}/image-{1}.tar', runner.temp, matrix.component) || '' }}
-          tags: ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
