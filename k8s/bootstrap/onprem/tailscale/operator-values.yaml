@@ -1,0 +1,19 @@
+operatorConfig:
+  hostname: devflow-onprem-operator
+  defaultTags:
+    - tag:devflow-onprem-operator
+  nodeSelector:
+    kubernetes.io/hostname: onprem-worker-01
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+proxyConfig:
+  defaultTags: tag:devflow-onprem-prometheus
+
+apiServerProxyConfig:
+  mode: "false"
