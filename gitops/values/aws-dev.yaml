@@ -25,7 +25,9 @@ backend:
       FRONTEND_BASE_URL: "https://team02-app.manoit.co.kr"
       CORS_ALLOWED_ORIGINS: "https://team02-app.manoit.co.kr"
       CACHE_TYPE: "memory"
-      DEVFLOW_CLOUD_ALLOW_PRIVATE_NETWORK: "false"
+      # 클러스터 내부·Tailscale Egress Service(ClusterIP 사설 주소)의 Prometheus를 등록하려면 true.
+      # 루프백·링크 로컬·메타데이터(169.254.169.254) 주소는 이 값과 상관없이 항상 차단된다.
+      DEVFLOW_CLOUD_ALLOW_PRIVATE_NETWORK: "true"
       GITHUB_OAUTH_CLIENT_ID: "Ov23li29AtY1YkSadIUk"
       GOOGLE_OAUTH_CLIENT_ID: "1056613756274-r3m0a6bljqr5sk2hkkpd2281qusglitn.apps.googleusercontent.com"
       ATTACHMENT_STORAGE: "s3"
