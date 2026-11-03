@@ -20,6 +20,10 @@ spec:
         kubernetes.io/hostname: onprem-worker-01
       imagePullSecrets:
         - name: ghcr-pull-secret
+      volumes:
+        - name: attachments
+          persistentVolumeClaim:
+            claimName: attachments-data
       containers:
         - name: backend
           image: ghcr.io/team-likelion-3rd-project/likelion-devops-7th-3rd-team02-backend:sha-87b04f86f465ea949fda5fa5e06b77275ff570a2
@@ -57,6 +61,13 @@ spec:
               value: http://devflow.onprem.test:30080
             - name: FRONTEND_BASE_URL
               value: http://devflow.onprem.test:30080
+            - name: ATTACHMENT_STORAGE
+              value: local
+            - name: ATTACHMENT_LOCAL_DIR
+              value: /app/attachments
+          volumeMounts:
+            - name: attachments
+              mountPath: /app/attachments
           resources:
             requests:
               cpu: 200m

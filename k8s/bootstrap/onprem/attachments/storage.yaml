@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: devflow-attachments-pv
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: onprem-local
+  claimRef:
+    namespace: devflow
+    name: attachments-data
+  local:
+    path: /srv/devflow/attachments
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - onprem-worker-01
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: attachments-data
+  namespace: devflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: onprem-local
+  volumeName: devflow-attachments-pv
+  resources:
+    requests:
+      storage: 1Gi

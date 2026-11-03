@@ -53,7 +53,7 @@ public class AttachmentService {
     }
 
     public AttachmentDtos.AttachmentResponse upload(Long userId, Long projectId, Long taskId, MultipartFile file) {
-        ProjectMember member = access.getMembership(projectId, userId);
+        access.checkMember(projectId, userId);
         Task task = task(projectId, taskId);
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "빈 파일은 올릴 수 없습니다.");
