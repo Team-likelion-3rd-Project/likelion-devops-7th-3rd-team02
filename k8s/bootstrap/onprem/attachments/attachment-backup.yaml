@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: devflow-attachment-backup-pv
+spec:
+  capacity:
+    storage: 3Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: onprem-local
+  claimRef:
+    namespace: devflow
+    name: attachment-backup-data
+  local:
+    path: /srv/devflow/attachment-backups
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - onprem-worker-01
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: attachment-backup-data
+  namespace: devflow
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: onprem-local
+  volumeName: devflow-attachment-backup-pv
+  resources:
+    requests:
+      storage: 3Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: attachment-backup
+  namespace: devflow
+spec:
+  schedule: "10 18 * * *"
+  timeZone: Asia/Seoul
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          nodeSelector:
+            kubernetes.io/hostname: onprem-worker-01
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: docker.io/library/postgres@sha256:3645570cccdfa447589da9f57dd740faa29b30938e861289a5574b6ca6b03826
+              command: ["/bin/sh", "-ec"]
+              env:
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+              args:
+                - |
+                  umask 077
+
+                  SOURCE_KB=$(du -sk /source | awk '{print $1}')
+                  FREE_KB=$(df -Pk /backups | awk 'NR == 2 {print $4}')
+
+                  if [ "$SOURCE_KB" -gt 1048576 ]; then
+                    echo "원본이 1Gi를 초과했습니다. 용량 검토가 필요합니다."
+                    exit 1
+                  fi
+
+                  if [ "$FREE_KB" -lt "$((SOURCE_KB + 1048576))" ]; then
+                    echo "백업 후 1Gi 여유 공간을 확보할 수 없어 중단합니다."
+                    exit 1
+                  fi
+
+                  cd /backups
+                  NAME="attachments-$(date -u +%Y%m%d-%H%M%S)-${POD_NAME}.tar.gz"
+                  PART=".${NAME}.partial"
+                  trap 'rm -f -- "$PART"' EXIT
+
+                  tar -czf "$PART" -C /source .
+                  tar -tzf "$PART" > /dev/null
+                  mv -- "$PART" "$NAME"
+
+                  sha256sum "$NAME" > "$NAME.sha256"
+                  chmod 600 "$NAME" "$NAME.sha256"
+                  sha256sum -c "$NAME.sha256"
+
+                  find . -maxdepth 1 -type f \
+                    -name 'attachments-*.tar.gz' -printf '%f\n' |
+                    sort -r |
+                    tail -n +4 |
+                    while IFS= read -r OLD; do
+                      rm -f -- "$OLD" "$OLD.sha256"
+                    done
+
+                  printf '첨부파일 백업 완료: %s\n' "$NAME"
+                  ls -lh "$NAME" "$NAME.sha256"
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 32Mi
+                limits:
+                  cpu: 300m
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: source
+                  mountPath: /source
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: source
+              persistentVolumeClaim:
+                claimName: attachments-data
+                readOnly: true
+            - name: backups
+              persistentVolumeClaim:
+                claimName: attachment-backup-data
