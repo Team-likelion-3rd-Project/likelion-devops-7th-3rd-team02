@@ -55,13 +55,3 @@ variable "enabled_cluster_log_types" {
   type        = list(string)
   default     = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 }
-
-variable "gitlab_security_group_id" {
-  description = "Security Group ID of the GitLab Runner host allowed to access the EKS private API endpoint"
-  type        = string
-}
-
-variable "gitlab_runner_role_arn" {
-  description = "IAM role ARN used by GitLab Runner for EKS authentication"
-  type        = string
-}

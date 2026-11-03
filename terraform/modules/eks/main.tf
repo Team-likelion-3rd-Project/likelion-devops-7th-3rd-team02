@@ -1,5 +1,5 @@
 # EKS 모듈: 클러스터, IAM Role, OIDC Provider, Managed Node Group, 기본 Add-on
-# API 엔드포인트는 Private 전용이라 VPC 내부(GitLab Runner 등)에서만 접근 가능하다.
+# API 엔드포인트는 Private 전용이라 VPC 내부에서만 접근 가능하다.
 
 locals {
   common_tags = {
@@ -87,41 +87,6 @@ resource "aws_eks_cluster" "main" {
   tags = merge(local.common_tags, { Name = local.cluster_name })
 
   depends_on = [aws_iam_role_policy_attachment.eks_cluster_AmazonEKSClusterPolicy]
-}
-
-# GitLab Runner 가 Private API 엔드포인트(443)에 접근할 수 있도록 허용
-resource "aws_vpc_security_group_ingress_rule" "eks_api_from_gitlab" {
-  security_group_id = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
-
-  referenced_security_group_id = var.gitlab_security_group_id
-
-  ip_protocol = "tcp"
-  from_port   = 443
-  to_port     = 443
-
-  description = "Allow GitLab Runner to access EKS private API endpoint"
-}
-
-# GitLab Runner IAM Role 을 EKS 사용자로 등록 (조회 권한만)
-resource "aws_eks_access_entry" "gitlab_runner" {
-  cluster_name  = aws_eks_cluster.main.name
-  principal_arn = var.gitlab_runner_role_arn
-  type          = "STANDARD"
-}
-
-resource "aws_eks_access_policy_association" "gitlab_runner_view" {
-  cluster_name  = aws_eks_cluster.main.name
-  principal_arn = var.gitlab_runner_role_arn
-
-  policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"
-
-  access_scope {
-    type = "cluster"
-  }
-
-  depends_on = [
-    aws_eks_access_entry.gitlab_runner
-  ]
 }
 
 # --- EKS OIDC Provider ---------------------------------------------------

@@ -21,16 +21,6 @@ output "private_db_subnet_ids" {
   value       = module.network.private_db_subnet_ids
 }
 
-output "alb_security_group_id" {
-  description = "ALB Security Group ID"
-  value       = module.security.alb_security_group_id
-}
-
-output "gitlab_security_group_id" {
-  description = "GitLab Security Group ID"
-  value       = module.security.gitlab_security_group_id
-}
-
 output "eks_node_security_group_id" {
   description = "EKS Node Security Group ID"
   value       = module.security.eks_node_security_group_id
@@ -39,21 +29,6 @@ output "eks_node_security_group_id" {
 output "rds_security_group_id" {
   description = "RDS Security Group ID"
   value       = module.security.rds_security_group_id
-}
-
-output "gitlab_instance_id" {
-  description = "GitLab EC2 Instance ID"
-  value       = module.gitlab.instance_id
-}
-
-output "gitlab_private_ip" {
-  description = "GitLab EC2 Private IP"
-  value       = module.gitlab.private_ip
-}
-
-output "gitlab_public_ip" {
-  description = "GitLab EC2 Public IP"
-  value       = module.gitlab.public_ip
 }
 
 output "rds_endpoint" {
