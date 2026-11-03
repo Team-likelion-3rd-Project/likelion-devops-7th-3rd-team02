@@ -2,7 +2,7 @@
 # - S3 는 정적 Website Hosting 을 쓰지 않고 OAC 로만 읽힌다 (Private bucket).
 # - Backend origin 은 기존 ALB 전용 호스트(alb_origin_hostname)를 https_only 로 참조한다.
 #   Host = SNI = ACM SAN = ALB rule host 이 한 호스트로 일치하므로 CloudFront->ALB
-#   순환/TLS 불일치가 없다 (team02-app 자체는 origin 으로 참조하지 않는다).
+#   순환/TLS 불일치가 없다 (apex(public domain) 자체는 origin 으로 참조하지 않는다).
 # - Lambda@Edge 는 사용하지 않는다 (SPA fallback = CloudFront Functions viewer-request).
 
 locals {
@@ -23,7 +23,7 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
 }
 
 # Host 헤더를 forward 하지 않는다 -> CloudFront 가 origin domain(alb_origin_hostname)을
-# Host/SNI 로 사용. AllViewer 였으면 viewer 의 team02-app Host 가 그대로 전달되어
+# Host/SNI 로 사용. AllViewer 였으면 viewer 의 apex(public domain) Host 가 그대로 전달되어
 # ALB rule 에 매칭되지 않는다.
 data "aws_cloudfront_origin_request_policy" "all_viewer_except_host_header" {
   name = "Managed-AllViewerExceptHostHeader"

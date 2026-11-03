@@ -68,17 +68,24 @@ variable "node_instance_type" {
 }
 
 variable "application_domain" {
-  description = "Application domain covered by the Application ACM certificate (team02-app.manoit.co.kr). Must NOT be confused with the GitLab domain team02-gitlab.manoit.co.kr."
+  description = "Public application domain served by CloudFront and covered by the application ACM certificates (devflowlab.net). Must NOT be confused with the legacy GitLab domains."
   type        = string
-  default     = "team02-app.manoit.co.kr"
+  default     = "devflowlab.net"
+}
+
+variable "route53_zone_name" {
+  description = "Name of the existing public Route53 hosted zone holding the application DNS records (devflowlab.net, zone id Z0319887F0X04JRXN6SW). Terraform only looks the zone up; NS delegation at the registrar is a prerequisite - see docs/migration/rds-multiaz-fresh-account-runbook.md."
+
+  type        = string
+  default     = "devflowlab.net"
 }
 
 # --- Phase 3.2: Frontend S3 + CloudFront -------------------------------------
 
 variable "alb_origin_hostname" {
-  description = "Dedicated hostname that ExternalDNS points at the application ALB, used as the CloudFront backend origin (avoids team02-app -> CloudFront -> team02-app self-reference). Its DNS record comes from the Ingress albOriginHost entry, TLS from alb_origin ACM below."
+  description = "Dedicated hostname that ExternalDNS points at the application ALB, used as the CloudFront backend origin (origin.devflowlab.net; avoids the apex -> CloudFront -> apex self-reference). Its DNS record comes from the Ingress albOriginHost entry (annotation-only), TLS from alb_origin ACM below. The apex application_domain alias is Terraform-owned."
   type        = string
-  default     = "team02-app-alb.manoit.co.kr"
+  default     = "origin.devflowlab.net"
 }
 
 variable "frontend_dns_takeover" {

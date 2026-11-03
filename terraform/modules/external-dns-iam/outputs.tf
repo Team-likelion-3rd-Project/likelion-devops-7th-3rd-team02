@@ -12,7 +12,7 @@ output "role_name" {
 }
 
 output "policy_arn" {
-  description = "IAM Policy ARN of the ExternalDNS Route53 least-privilege policy (scoped to manoit.co.kr hosted zone)"
+  description = "IAM Policy ARN of the ExternalDNS Route53 least-privilege policy (allows only the ALB origin record names in the devflowlab.net hosted zone)"
   value       = aws_iam_policy.external_dns.arn
 }
 

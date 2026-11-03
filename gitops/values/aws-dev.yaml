@@ -22,8 +22,8 @@ backend:
     env:
       TZ: "Asia/Seoul"
       K8S_NAMESPACE: "devflow"
-      FRONTEND_BASE_URL: "https://team02-app.manoit.co.kr"
-      CORS_ALLOWED_ORIGINS: "https://team02-app.manoit.co.kr"
+      FRONTEND_BASE_URL: "https://devflowlab.net"
+      CORS_ALLOWED_ORIGINS: "https://devflowlab.net"
       CACHE_TYPE: "memory"
       # 클러스터 내부·Tailscale Egress Service(ClusterIP 사설 주소)의 Prometheus를 등록하려면 true.
       # 루프백·링크 로컬·메타데이터(169.254.169.254) 주소는 이 값과 상관없이 항상 차단된다.
@@ -44,5 +44,5 @@ backend:
 
 ingress:
   className: alb
-  host: team02-app.manoit.co.kr
-  albOriginHost: team02-app-alb.manoit.co.kr
+  host: devflowlab.net
+  albOriginHost: origin.devflowlab.net
