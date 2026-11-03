@@ -30,5 +30,5 @@ backend:
 
 ingress:
   className: alb
-  host: team02-app.manoit.co.kr
+  host: devflowlab.net
   albOriginHost: ""

@@ -13,6 +13,12 @@ metadata:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
+    {{- if .Values.ingress.albOriginHost }}
+    # ExternalDNS 는 origin 호스트만 register 한다. apex(host) alias 는
+    # Terraform(aws_route53_record.frontend) 전용 — CloudFront alias 덮어쓰기 방지.
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingress.albOriginHost }}
+    external-dns.alpha.kubernetes.io/ingress-hostname-source: annotation-only
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   tls:

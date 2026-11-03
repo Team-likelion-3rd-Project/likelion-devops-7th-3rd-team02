@@ -98,8 +98,8 @@ backend:
     env:
       TZ: "Asia/Seoul"
       K8S_NAMESPACE: "devflow"
-      FRONTEND_BASE_URL: "https://team02-app.manoit.co.kr"
-      CORS_ALLOWED_ORIGINS: "https://team02-app.manoit.co.kr"
+      FRONTEND_BASE_URL: "https://devflowlab.net"
+      CORS_ALLOWED_ORIGINS: "https://devflowlab.net"
       CACHE_TYPE: "memory"
       DEVFLOW_CLOUD_ALLOW_PRIVATE_NETWORK: "false"
       GITHUB_OAUTH_CLIENT_ID: "<GitHub OAuth App client id>"
@@ -167,12 +167,12 @@ kubectl get cm backend-config -n devflow -o yaml | Select-String DEVFLOW_AWS_PRI
 
 CloudFront API ordered behavior는 `Managed-CachingDisabled` + `Managed-AllViewerExceptHostHeader`로
 `Authorization`·Cookie·Query String이 ALB에 전달되고 응답을 공유 캐시하지 않는다(변경 없음).
-ALB Origin에 `X-Forwarded-Host = team02-app.manoit.co.kr` custom header가 추가된다(apply 필요).
+ALB Origin에 `X-Forwarded-Host = devflowlab.net` custom header가 추가된다(apply 필요).
 
 ```bash
-curl -fsS -D - -o /dev/null https://team02-app.manoit.co.kr/api/users/me                    # 미인증 → Backend 정책상 401
-curl -fsS -H "Authorization: Bearer <JWT>" https://team02-app.manoit.co.kr/api/users/me     # 200
-# GitHub OAuth: /oauth2/authorization/github → redirect_uri가 https://team02-app.manoit.co.kr/... 인지 확인
+curl -fsS -D - -o /dev/null https://devflowlab.net/api/users/me                    # 미인증 → Backend 정책상 401
+curl -fsS -H "Authorization: Bearer <JWT>" https://devflowlab.net/api/users/me     # 200
+# GitHub OAuth: /oauth2/authorization/github → redirect_uri가 https://devflowlab.net/... 인지 확인
 # 로그인 후 프론트 이동·세션 유지·GET /api/users/me 200
 ```
 

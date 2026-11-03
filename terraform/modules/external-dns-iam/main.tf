@@ -14,12 +14,14 @@ locals {
 }
 
 # --- IAM Policy: Route53 최소 권한 -------------------------------------------
-# 레코드 변경은 team02-app.manoit.co.kr 이름으로만 제한한다.
-# 주의: ExternalDNS 가 TXT registry 레코드를 "a-team02-app..." 같은 파생 이름으로
-# 만들면 이 조건에 걸려 AccessDenied 가 날 수 있다(배포 후 확인 필요).
+# 레코드 변경은 var.record_name(ALB origin 호스트)과 그 TXT 소유권 파생 이름으로만
+# 제한한다. apex(application_domain, CloudFront alias)는 Terraform 전용이므로 이 Role에
+# 변경 권한을 주지 않는다 (ExternalDNS 의 CloudFront alias 덮어쓰기 방지).
+# 주의: ExternalDNS 가 TXT registry 레코드를 "a-<origin>" 같은 파생 이름으로
+# 만들면 이 조건에 걸려 AccessDenied 가 날 수 있다(배포 후 log 확인 필요).
 resource "aws_iam_policy" "external_dns" {
   name        = local.iam_policy_name
-  description = "Least-privilege IAM policy for Kubernetes ExternalDNS to manage team02-app.manoit.co.kr in Route53"
+  description = "Least-privilege IAM policy for Kubernetes ExternalDNS to manage the ALB origin record ${var.record_name} in Route53"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -37,9 +39,10 @@ resource "aws_iam_policy" "external_dns" {
         Condition = {
           "ForAllValues:StringEquals" = {
             "route53:ChangeResourceRecordSetsNormalizedRecordNames" = [
-              "team02-app.manoit.co.kr",
-              "aaaa-team02-app.manoit.co.kr",
-              "cname-team02-app.manoit.co.kr"
+              var.record_name,
+              "a-${var.record_name}",
+              "aaaa-${var.record_name}",
+              "cname-${var.record_name}"
             ]
           }
         }

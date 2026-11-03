@@ -2,8 +2,8 @@
 # 현재 Ingress 는 certificate discovery 를 쓰므로 이 ARN 을 YAML 에 넣지 않아도 된다.
 
 output "certificate_arn" {
-  description = "ACM Certificate ARN for the application domain (team02-app.manoit.co.kr). Use this in Kubernetes Ingress annotation: alb.ingress.kubernetes.io/certificate-arn"
-  value       = aws_acm_certificate.this.arn
+  description = "Validated ACM Certificate ARN for the application domain (var.domain_name). Referencing aws_acm_certificate_validation makes consumers (e.g. CloudFront viewer_certificate) wait for DNS validation / ISSUED, not just ARN creation. Use this in Kubernetes Ingress annotation: alb.ingress.kubernetes.io/certificate-arn"
+  value       = aws_acm_certificate_validation.this.certificate_arn
 }
 
 output "certificate_id" {
@@ -17,6 +17,6 @@ output "domain_name" {
 }
 
 output "validation_record_fqdns" {
-  description = "FQDNs of the Route53 records created for DNS validation (set only after validation completes)"
+  description = "FQDNs of the Route53 records created for DNS validation; empty when create_validation_records = false (records owned by another call)"
   value       = [for r in aws_route53_record.validation : r.fqdn]
 }

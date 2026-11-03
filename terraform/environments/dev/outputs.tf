@@ -109,12 +109,12 @@ output "eks_launch_template_id" {
 
 # --- Application ACM ----------------------------------------------------------
 output "application_acm_certificate_arn" {
-  description = "ACM Certificate ARN for the application domain team02-app.manoit.co.kr. Use in Kubernetes Ingress annotation: alb.ingress.kubernetes.io/certificate-arn"
+  description = "ACM Certificate ARN for the application domain (var.application_domain, devflowlab.net). Use in Kubernetes Ingress annotation: alb.ingress.kubernetes.io/certificate-arn"
   value       = module.application_acm.certificate_arn
 }
 
 output "application_acm_certificate_id" {
-  description = "ACM Certificate ID for the application domain team02-app.manoit.co.kr"
+  description = "ACM Certificate ID for the application domain (var.application_domain, devflowlab.net)"
   value       = module.application_acm.certificate_id
 }
 
@@ -136,7 +136,7 @@ output "alb_controller_policy_arn" {
 
 # --- ExternalDNS IAM ------------------------------------------------------
 output "external_dns_role_arn" {
-  description = "IAM Role ARN for ExternalDNS (for ServiceAccount annotation eks.amazonaws.com/role-arn). Scoped to Route53 changes in manoit.co.kr hosted zone."
+  description = "IAM Role ARN for ExternalDNS (for ServiceAccount annotation eks.amazonaws.com/role-arn). Scoped to Route53 changes for the ALB origin record in the devflowlab.net hosted zone."
   value       = module.external_dns_iam.role_arn
 }
 
@@ -146,7 +146,7 @@ output "external_dns_role_name" {
 }
 
 output "external_dns_policy_arn" {
-  description = "IAM Policy ARN of the ExternalDNS Route53 least-privilege policy (scoped to manoit.co.kr hosted zone)"
+  description = "IAM Policy ARN of the ExternalDNS Route53 least-privilege policy (allows only the ALB origin record names in the devflowlab.net hosted zone)"
   value       = module.external_dns_iam.policy_arn
 }
 
@@ -167,12 +167,12 @@ output "frontend_cloudfront_domain_name" {
 }
 
 output "frontend_cloudfront_acm_certificate_arn" {
-  description = "us-east-1 ACM certificate ARN used by CloudFront viewer TLS for team02-app.manoit.co.kr"
+  description = "us-east-1 ACM certificate ARN used by CloudFront viewer TLS for the application domain (devflowlab.net). DNS validation reuses the application_acm validation CNAME (single owner)."
   value       = module.frontend_cloudfront_acm.certificate_arn
 }
 
 output "alb_origin_acm_certificate_arn" {
-  description = "ap-northeast-1 ACM certificate ARN for the CloudFront->ALB origin host (team02-app-alb.manoit.co.kr). Discovered automatically by the ALB controller via Ingress tls.hosts."
+  description = "ap-northeast-1 ACM certificate ARN for the CloudFront->ALB origin host (var.alb_origin_hostname, origin.devflowlab.net). Discovered automatically by the ALB controller via Ingress tls.hosts."
   value       = module.alb_origin_acm.certificate_arn
 }
 

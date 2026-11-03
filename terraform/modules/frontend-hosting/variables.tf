@@ -11,12 +11,12 @@ variable "environment" {
 }
 
 variable "application_domain" {
-  description = "Public domain served by CloudFront (team02-app.manoit.co.kr). Added as an alias before DNS cutover."
+  description = "Public domain served by CloudFront (devflowlab.net). Added as an alias before DNS cutover."
   type        = string
 }
 
 variable "alb_origin_hostname" {
-  description = "Dedicated hostname that resolves to the existing application ALB and is used as the CloudFront backend origin (team02-app-alb.manoit.co.kr). DNS is created by ExternalDNS from the Ingress host entry, TLS by a separate ap-northeast-1 ACM certificate."
+  description = "Dedicated hostname that resolves to the existing application ALB and is used as the CloudFront backend origin (origin.devflowlab.net). DNS is created by ExternalDNS from the Ingress albOriginHost entry (annotation-only), TLS by a separate ap-northeast-1 ACM certificate."
   type        = string
 }
 

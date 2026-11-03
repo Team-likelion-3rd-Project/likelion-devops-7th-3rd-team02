@@ -69,8 +69,13 @@ Multi-AZ DB Cluster, 기존 계정 DB 데이터 마이그레이션(§F 참조).
 - EKS OIDC Provider: `module.eks` 내부에서 신규 생성(`data.tls_certificate` →
   `aws_iam_openid_connect_provider`). 계정 독립적.
 - ACM: Application/ALB-origin cert는 `ap-northeast-1`, CloudFront viewer cert는
-  `us-east-1` provider. DNS 검증은 §C의 Route53 zone에 의존.
-- Route53: `data.aws_route53_zone.main`이 `manoit.co.kr` public zone을 **무조건
+  `us-east-1` provider. DNS 검증은 §C의 Route53 zone에 의존. 검증 CNAME은 FQDN당
+  **단일 owner 단일 레코드**다: `devflowlab.net`은 `application_acm`만 생성하고
+  `frontend_cloudfront_acm`(us-east-1)은 동일 CNAME을 재사용한다(`create_validation_records=false`).
+  동일 계정·동일 FQDN의 ACM 검증 CNAME은 리전과 무관하므로 1건으로 두 리전 인증서가
+  모두 검증된다. `origin.devflowlab.net` CNAME은 `alb_origin_acm`이 별도로 소유한다.
+- Route53: `data.aws_route53_zone.main`이 `var.route53_zone_name`(default `devflowlab.net`,
+  zone id `Z0319887F0X04JRXN6SW`) public zone을 **무조건
   조회** → §C D1.
 - S3: attachment bucket은 `<project>-<env>-attachment-<account_id>` suffix로
   자동 분리. frontend bucket default `<project>-<env>-frontend`은 전역 이름이라
@@ -82,22 +87,28 @@ Multi-AZ DB Cluster, 기존 계정 DB 데이터 마이그레이션(§F 참조).
 
 ### D1 — Route53 Hosted Zone
 
-- `terraform plan`은 `data.aws_route53_zone.main`(manoit.co.kr, public) 조회에
+- `terraform plan`은 `data.aws_route53_zone.main`(`var.route53_zone_name` =
+  `devflowlab.net`, public) 조회에
   실패하면 전체가 중단된다. zone은 **Terraform이 만들지 않고 조회만** 하므로
-  신규 계정에 Hosted Zone이 미리 존재해야 한다.
+  신규 계정에 Hosted Zone(ID `Z0319887F0X04JRXN6SW`)이 미리 존재해야 한다.
 - 확인:
 
   ```bash
-  aws route53 list-hosted-zones-by-name --DNS-name manoit.co.kr.
-  aws route53 get-hosted-zone --id <zone-id>   # Nameservers 확인
+  aws route53 list-hosted-zones-by-name --DNS-name devflowlab.net.
+  aws route53 get-hosted-zone --id Z0319887F0X04JRXN6SW   # Nameservers 확인
   ```
 
 - **Zone 생성과 NS 위임 변경을 혼동하지 않는다.** 신규 계정에 zone을 만들고
   실제 트래픽이 이전되려면 도메인의 권한 있는 Nameserver(레지스트라/부모 zone)가
   신규 zone의 NS를 가리켜야 한다. **기존 서비스에 영향을 주는 NS 변경은 별도
-  승인 사항**이다. 승인 전에는 ACM DNS 검증용 레코드를 기존 위임 경로에 반영해 검증할 수 있는지
-  사전에 확인한다.
-- 도메인(`manoit.co.kr`, `team02-*.manoit.co.kr`)을 임의 변경하지 않는다.
+  승인 사항**이다. NS 위임이 공개 DNS에 반영돼야 ACM DNS 검증도 완료된다 — zone
+  내부에 검증 CNAME을 만들어도 위임 전이면 두 인증서 모두 72시간 후
+  `Validation timed out`이 된다.
+- DNS 관리 책임 분리: apex `devflowlab.net` A alias(→CloudFront)는 **Terraform
+  전용**, `origin.devflowlab.net`(→ALB)와 TXT 소유권 레코드는 **ExternalDNS 전용**
+  (Ingress annotation-only + IAM origin 이름 허용). ExternalDNS는 apex를 변경할
+  수 없다.
+- 도메인(`devflowlab.net`, `origin.devflowlab.net`)을 임의 변경하지 않는다.
 
 ### D2 — ExternalId (cloud_readonly_external_id)
 
@@ -266,13 +277,28 @@ aws rds describe-db-instances --db-instance-identifier devflow-dev-db \
    한다.
 4. Frontend 배포 경로: CloudFront distribution·S3 bucket은 신규 계정에 새로
    생성되므로 CI의 `FRONTEND_S3_BUCKET`/`CLOUDFRONT_DISTRIBUTION_ID` vars를 신규
-   output으로 교체. 도메인(`team02-app.manoit.co.kr`)과 ACM은 §C-D1 위임 상태에
+   output으로 교체. 도메인(`devflowlab.net`)과 ACM은 §C-D1 위임 상태에
    따라 DNS 반영 확인.
-5. OAuth 콜백: 도메인이 동일하면 OAuth App 변경 불요. 도메인이 바뀌면 별도 승인.
-6. Observability: monitoring Helm values의 Backend URL과 Alertmanager
+5. OAuth 콜백(도메인 변경 — `FRONTEND_BASE_URL`과 동일 도메인): GitHub OAuth App의
+   Callback URL과 Google OAuth의 Authorized redirect URI를 아래 값으로 등록/교체
+   (수동·별도 승인).
+   - `https://devflowlab.net/login/oauth2/code/github`
+   - `https://devflowlab.net/login/oauth2/code/google`
+   Backend는 `FRONTEND_BASE_URL + /login/oauth2/code/{github|google}`을 redirect_uri로
+   생성하므로 GitOps values(§G2)의 `FRONTEND_BASE_URL`과 정확히 일치해야 한다.
+6. Frontend apex DNS alias(takeover/cutover) 최초 배포 순서: apex `devflowlab.net`
+   A alias(→CloudFront)의 owner는 Terraform(`aws_route53_record.frontend`)이며
+   ExternalDNS는 annotation-only와 Origin 전용 IAM으로 apex를 변경할 수 없다.
+   ① `frontend_dns_takeover=false`/`frontend_dns_cutover=false`로 1차 apply
+   ② EKS에 LBC/ExternalDNS/ArgoCD 적용 후 Ingress deploy로 ALB 생성 확인
+   (LBC 태그 `elbv2.k8s.aws/cluster`+`ingress.k8s.aws/stack` 조회 가능)
+   ③ `takeover=true`+`cutover=true`로 2차 apply → alias→CloudFront 신규 생성
+   (fresh state이므로 import 불요). Rollback은 `cutover=false` 재apply
+   (alias target만 ALB로 atomic 복귀, 레코드 삭제 없음).
+7. Observability: monitoring Helm values의 Backend URL과 Alertmanager
    Slack/Email Secret은 신규 cluster에 맞게 재배포. Slack webhook 등 Secret 값은
    기존 것과 동일 재사용 여부 확인 후 Secret store에만 갱신.
-7. 이번 Build에서 외부 GitOps repository나 Secret을 직접 수정하지 않는다. 위 항목은
+8. 이번 Build에서 외부 GitOps repository나 Secret을 직접 수정하지 않는다. 위 항목은
    배포 실행 단계에서 별도 승인으로 수행한다.
 
 ## H. Failover 검증 (별도 승인, 자동 실행 금지)

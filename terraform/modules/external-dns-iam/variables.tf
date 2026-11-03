@@ -21,6 +21,11 @@ variable "oidc_issuer_url" {
 }
 
 variable "hosted_zone_id" {
-  description = "Route53 Public Hosted Zone ID for manoit.co.kr that ExternalDNS is permitted to mutate records in"
+  description = "Route53 Public Hosted Zone ID for devflowlab.net that ExternalDNS is permitted to mutate records in"
+  type        = string
+}
+
+variable "record_name" {
+  description = "The single public FQDN ExternalDNS may change (the ALB origin hostname). TXT ownership records are permitted as a-/aaaa-/cname- prefixed derivatives. The apex CloudFront alias is Terraform-owned and must NOT be listed here."
   type        = string
 }
