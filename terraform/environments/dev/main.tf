@@ -90,7 +90,6 @@ module "alb_controller_iam" {
   oidc_provider_arn = module.eks.oidc_provider_arn
   oidc_issuer_url   = module.eks.oidc_provider_url
 }
-
 # Application ACM 인증서 (devflowlab.net ap-northeast-1, DNS 검증)
 # devflowlab.net 검증 CNAME의 유일한 Terraform owner (create_validation_records 기본 true).
 module "application_acm" {

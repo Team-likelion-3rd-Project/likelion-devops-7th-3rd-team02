@@ -69,6 +69,7 @@ Multi-AZ DB Cluster, 기존 계정 DB 데이터 마이그레이션(§F 참조).
 - EKS OIDC Provider: `module.eks` 내부에서 신규 생성(`data.tls_certificate` →
   `aws_iam_openid_connect_provider`). 계정 독립적.
 - ACM: Application/ALB-origin cert는 `ap-northeast-1`, CloudFront viewer cert는
+
   `us-east-1` provider. DNS 검증은 §C의 Route53 zone에 의존. 검증 CNAME은 FQDN당
   **단일 owner 단일 레코드**다: `devflowlab.net`은 `application_acm`만 생성하고
   `frontend_cloudfront_acm`(us-east-1)은 동일 CNAME을 재사용한다(`create_validation_records=false`).
@@ -87,8 +88,6 @@ Multi-AZ DB Cluster, 기존 계정 DB 데이터 마이그레이션(§F 참조).
 
 ### D1 — Route53 Hosted Zone
 
-- `terraform plan`은 `data.aws_route53_zone.main`(`var.route53_zone_name` =
-  `devflowlab.net`, public) 조회에
   실패하면 전체가 중단된다. zone은 **Terraform이 만들지 않고 조회만** 하므로
   신규 계정에 Hosted Zone(ID `Z0319887F0X04JRXN6SW`)이 미리 존재해야 한다.
 - 확인:

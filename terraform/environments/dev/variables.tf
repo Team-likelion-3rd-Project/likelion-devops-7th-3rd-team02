@@ -75,6 +75,7 @@ variable "application_domain" {
 
 variable "route53_zone_name" {
   description = "Name of the existing public Route53 hosted zone holding the application DNS records (devflowlab.net, zone id Z0319887F0X04JRXN6SW). Terraform only looks the zone up; NS delegation at the registrar is a prerequisite - see docs/migration/rds-multiaz-fresh-account-runbook.md."
+
   type        = string
   default     = "devflowlab.net"
 }
