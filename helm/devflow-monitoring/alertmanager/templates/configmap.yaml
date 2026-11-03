@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: alert-router
+    app.kubernetes.io/part-of: devflow-monitoring
+data:
+  {{ .Values.config.filename }}: |
+    {{- .Files.Get "alertmanager.yml" | nindent 4 }}

@@ -1,0 +1,26 @@
+image:
+  repository: grafana/alloy
+  tag: v1.21.2
+  pullPolicy: IfNotPresent
+nameOverride: ""
+fullnameOverride: alloy
+port: 12345
+storagePath: /var/lib/alloy/data
+loki:
+  url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+serviceAccount:
+  create: true
+  name: alloy
+rbac:
+  create: true
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+nodeSelector:
+  kubernetes.io/os: linux
+tolerations:
+  - operator: Exists

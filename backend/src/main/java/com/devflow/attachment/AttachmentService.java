@@ -74,11 +74,13 @@ public class AttachmentService {
         }
         try {
             return transactionTemplate.execute(status -> {
-                    ProjectMember managedMember = access.getMembership(projectId, userId);
-                    Task managedTask = task(projectId, taskId);
+                ProjectMember managedMember =
+                    access.getMembership(projectId, userId);
 
-                    TaskAttachment saved = repository.saveAndFlush(
-                        new TaskAttachment(
+                Task managedTask = task(projectId, taskId);
+
+                TaskAttachment saved = repository.saveAndFlush(
+                    new TaskAttachment(
                             managedTask,
                             managedMember.getUser(),
                             name,
@@ -86,12 +88,12 @@ public class AttachmentService {
                             file.getSize(),
                             key,
                             Times.now(clock)
-                        )
-        );
+                    )
+                );
 
-        return AttachmentDtos.AttachmentResponse.from(saved);
-    });
-} catch (RuntimeException e) {
+    return AttachmentDtos.AttachmentResponse.from(saved);
+});
+        } catch (RuntimeException e) {
             try {
                 storage.delete(key);
             } catch (RuntimeException cleanup) {

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: devflow-loki
+description: DevFlow Phase 3.4 Loki (Monolithic single-binary, filesystem storage with PVC)
+type: application
+version: 0.1.0
+appVersion: "3.7.9"
+dependencies:
+  - name: loki
+    alias: loki
+    version: "20.2.1"
+    repository: "https://grafana-community.github.io/helm-charts"
+    condition: loki.enabled

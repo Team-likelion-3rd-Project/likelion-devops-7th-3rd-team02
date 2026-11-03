@@ -1,0 +1,6 @@
+apiVersion: v2
+name: devflow-alloy
+description: DevFlow Phase 3.4 Grafana Alloy DaemonSet (Kubernetes API based pod log collection to Loki)
+type: application
+version: 0.1.0
+appVersion: "1.21.2"
