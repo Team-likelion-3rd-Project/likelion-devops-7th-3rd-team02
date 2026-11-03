@@ -47,8 +47,6 @@ fi
 if grep -q '<RDS_HOST>' values/aws-dev.yaml; then
   echo "WARNING: values/aws-dev.yaml still contains the <RDS_HOST> placeholder - fill it before syncing"
 fi
-  exit 1
-fi
 
 echo "=== Commit and push single release commit ==="
 git config user.name "github-actions-gitops"
