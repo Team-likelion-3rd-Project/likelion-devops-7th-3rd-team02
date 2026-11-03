@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/component: alert-router
+    app.kubernetes.io/part-of: devflow-monitoring
+spec:
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+        app.kubernetes.io/name: alertmanager
+        app.kubernetes.io/component: alert-router
+        app.kubernetes.io/part-of: devflow-monitoring
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: alertmanager
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --config.file={{ .Values.config.mountPath }}/{{ .Values.config.filename }}
+            - --storage.path=/alertmanager
+            - --web.listen-address=:{{ .Values.port }}
+            - --cluster.listen-address=
+          ports:
+            - name: http
+              containerPort: {{ .Values.port }}
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: {{ .Values.config.mountPath }}
+              readOnly: true
+            - name: slack-secret
+              mountPath: {{ .Values.secrets.slack.mountPath }}
+              readOnly: true
+            - name: devflow-secret
+              mountPath: {{ .Values.secrets.devflow.mountPath }}
+              readOnly: true
+            - name: storage
+              mountPath: /alertmanager
+      volumes:
+        - name: config
+          configMap:
+            name: alertmanager-config
+            defaultMode: 0444
+        - name: slack-secret
+          secret:
+            secretName: {{ .Values.secrets.slack.name }}
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.secrets.slack.key }}
+                path: {{ .Values.secrets.slack.filename }}
+        - name: devflow-secret
+          secret:
+            secretName: {{ .Values.secrets.devflow.name }}
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.secrets.devflow.key }}
+                path: {{ .Values.secrets.devflow.filename }}
+        - name: storage
+          emptyDir: {}

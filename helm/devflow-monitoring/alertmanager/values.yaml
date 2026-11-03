@@ -1,0 +1,32 @@
+image:
+  repository: quay.io/prometheus/alertmanager
+  tag: v0.34.2
+  pullPolicy: IfNotPresent
+nameOverride: ""
+fullnameOverride: alertmanager
+replicas: 1
+port: 9093
+config:
+  mountPath: /etc/alertmanager
+  filename: alertmanager.yml
+secrets:
+  slack:
+    name: devflow-alertmanager-slack
+    key: webhook-url
+    mountPath: /etc/alertmanager/slack
+    filename: webhook-url
+  devflow:
+    name: devflow-alertmanager-webhook
+    key: alertmanager-token
+    mountPath: /etc/alertmanager/devflow
+    filename: alertmanager-token
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+nodeSelector:
+  kubernetes.io/os: linux
+tolerations: []

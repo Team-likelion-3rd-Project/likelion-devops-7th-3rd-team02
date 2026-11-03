@@ -1,0 +1,6 @@
+apiVersion: v2
+name: devflow-alertmanager
+description: DevFlow Phase 3.4 Alertmanager (Slack and DevFlow Incident webhook receiver)
+type: application
+version: 0.1.0
+appVersion: "v0.34.2"
