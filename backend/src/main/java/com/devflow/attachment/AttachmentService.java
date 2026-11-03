@@ -73,9 +73,26 @@ public class AttachmentService {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "파일을 읽지 못했습니다.");
         }
         try {
-            return transactionTemplate.execute(status -> AttachmentDtos.AttachmentResponse.from(
-                    repository.saveAndFlush(new TaskAttachment(
-                            task, member.getUser(), name, type, file.getSize(), key, Times.now(clock)))));
+            return transactionTemplate.execute(status -> {
+                ProjectMember managedMember =
+                    access.getMembership(projectId, userId);
+
+                Task managedTask = task(projectId, taskId);
+
+                TaskAttachment saved = repository.saveAndFlush(
+                    new TaskAttachment(
+                            managedTask,
+                            managedMember.getUser(),
+                            name,
+                            type,
+                            file.getSize(),
+                            key,
+                            Times.now(clock)
+                    )
+                );
+
+    return AttachmentDtos.AttachmentResponse.from(saved);
+});
         } catch (RuntimeException e) {
             try {
                 storage.delete(key);
