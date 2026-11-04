@@ -54,3 +54,5 @@ AGENTS*
 /uploads/
 /tmp/
 phase*
+# IDE(VS Code·Eclipse) 빌드 출력
+backend/bin/
