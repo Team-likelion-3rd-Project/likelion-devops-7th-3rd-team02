@@ -41,7 +41,7 @@ spec:
             - name: DEPLOY_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: devflow-project-webhooks
+                  name: devflow-aws-project-webhooks
                   key: deployment-token
             - name: RELEASE_COMMIT_SHA
               value: "9f72deab85343bfc99f0abdc14ac7e1547dc22d6"
@@ -73,7 +73,7 @@ spec:
                   --connect-timeout 5 --max-time 30 \
                   --header 'Content-Type: application/json' \
                   --data-binary @/tmp/deployment.json \
-                  http://backend.devflow.svc.cluster.local:8080/api/webhooks/deployments \
+                  https://devflowlab.net/api/webhooks/deployments \
                   > /tmp/response.json
 
               grep -Eq '"success"[[:space:]]*:[[:space:]]*true' /tmp/response.json
