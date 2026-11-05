@@ -217,7 +217,9 @@ async function main() {
   check('5-2', '파이프라인 조회 + 5단계', first && (first.stages || []).map((s) => s.name).join(',') === 'BUILD,TEST,IMAGE,VERIFY,DEPLOY', short(pl));
 
   const hook = '/api/webhooks/deployments';
-  const rec = { environment: 'production', service: 'backend', commitSha: `chk${RUN}`, imageTag: `chk${RUN}`, imageDigest: `sha256:${RUN}`, status: 'SUCCESS' };
+  // commitSha는 7~40자리 16진수여야 한다 → 실행 ID(36진수)를 16진수로 바꿔 쓴다
+  const sha = BigInt(parseInt(RUN, 36)).toString(16).padStart(12, '0').slice(0, 12);
+  const rec = { environment: 'production', service: 'backend', commitSha: sha, imageTag: `chk-${sha.slice(0, 8)}`, imageDigest: `sha256:${sha}`, status: 'SUCCESS' };
   const d1 = await call('POST', hook, { token: dtoken, json: rec });
   const d2 = await call('POST', hook, { token: dtoken, json: rec });
   check('5-4', '배포 기록 Webhook (프로젝트 토큰)', d1.status === 200 && d1.data?.data?.id, short(d1));
