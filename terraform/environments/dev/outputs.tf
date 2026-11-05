@@ -202,11 +202,11 @@ output "backend_attachments_irsa_role_arn" {
 }
 
 output "cloud_readonly_role_arn" {
-  description = "Demo read-only IAM role ARN to register in DevFlow project cloud settings (aws_role_arn), not a Helm value. terraform -chdir=terraform/environments/dev output -raw cloud_readonly_role_arn"
-  value       = module.cloud_readonly_iam.cloud_readonly_role_arn
+  description = "Demo read-only IAM role ARN to register in DevFlow project cloud settings (aws_role_arn), not a Helm value. null while cloud_readonly_external_id is null (module skipped). terraform -chdir=terraform/environments/dev output -raw cloud_readonly_role_arn"
+  value       = one(module.cloud_readonly_iam[*].cloud_readonly_role_arn)
 }
 
 output "cloud_readonly_role_name" {
-  description = "Name of the demo read-only IAM role"
-  value       = module.cloud_readonly_iam.cloud_readonly_role_name
+  description = "Name of the demo read-only IAM role. null while cloud_readonly_external_id is null (module skipped)."
+  value       = one(module.cloud_readonly_iam[*].cloud_readonly_role_name)
 }
