@@ -14,14 +14,8 @@ data "tls_certificate" "github" {
   url = var.github_oidc_url
 }
 
-resource "aws_iam_openid_connect_provider" "github" {
-  url             = var.github_oidc_url
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = [data.tls_certificate.github.certificates[0].sha1_fingerprint]
-
-  tags = merge(local.common_tags, {
-    Name = "${var.project_name}-${var.environment}-github-actions-oidc"
-  })
+data "aws_iam_openid_connect_provider" "github" {
+  url = var.github_oidc_url
 }
 
 resource "aws_iam_role" "actions" {
@@ -34,7 +28,7 @@ resource "aws_iam_role" "actions" {
       Effect = "Allow"
 
       Principal = {
-        Federated = aws_iam_openid_connect_provider.github.arn
+        Federated = data.aws_iam_openid_connect_provider.github.arn
       }
 
       Action = "sts:AssumeRoleWithWebIdentity"
@@ -42,7 +36,7 @@ resource "aws_iam_role" "actions" {
       Condition = {
         StringEquals = {
           "${local.oidc_issuer}:aud" = "sts.amazonaws.com"
-          "${local.oidc_issuer}:sub" = "repo:${var.github_repository}:environment:${var.github_environment}"
+          "${local.oidc_issuer}:sub" = "repo:Team-likelion-3rd-Project@336729042/likelion-devops-7th-3rd-team02@1400844031:environment:${var.github_environment}"
         }
       }
     }]
@@ -84,7 +78,7 @@ resource "aws_iam_role_policy" "frontend_deploy" {
           "cloudfront:GetInvalidation"
         ]
 
-        Resource = "arn:aws:cloudfront:${data.aws_caller_identity.current.account_id}:distribution/${var.cloudfront_distribution_id}"
+        Resource = "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${var.cloudfront_distribution_id}"
       }
     ]
   })

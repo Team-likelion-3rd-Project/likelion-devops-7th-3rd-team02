@@ -1,2 +1,2 @@
 db_password = ""
-cloud_readonly_external_id = ""
+cloud_readonly_external_id = null

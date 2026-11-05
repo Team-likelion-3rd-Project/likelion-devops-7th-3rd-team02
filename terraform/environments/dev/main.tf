@@ -205,6 +205,13 @@ module "attachment_storage" {
 module "cloud_readonly_iam" {
   source = "../../modules/cloud-readonly-iam"
 
+  # Bootstrap gate: while DevFlow has not issued the ExternalId the variable stays
+  # null and this module is skipped, so the first deployment of the rest of the
+  # infrastructure is not blocked. The trust policy itself is unchanged - with an
+  # ExternalId present the module creates the role exactly as before. Once created,
+  # keep passing the same ExternalId; flipping back to null would destroy the role.
+  count = var.cloud_readonly_external_id == null ? 0 : 1
+
   project_name           = var.project_name
   environment            = var.environment
   backend_irsa_role_arn  = module.attachment_storage.backend_irsa_role_arn

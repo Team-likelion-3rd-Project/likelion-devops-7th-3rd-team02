@@ -111,6 +111,13 @@ variable "github_environment" {
 }
 
 variable "cloud_readonly_external_id" {
-  description = "sts:ExternalId issued by DevFlow when the project cloud environment is registered (CL2 screen). Required input for the demo read-only role trust policy; no default so a plan without it fails instead of building a loose trust."
+  description = "sts:ExternalId issued by DevFlow when the project cloud environment is registered (CL2 screen). Input for the demo read-only role trust policy. Null (default) skips module.cloud_readonly_iam entirely so a first deployment is not blocked while DevFlow has not issued the value yet - the trust policy is never relaxed. Once the role exists the same ExternalId must keep being supplied: switching back to null plans an IAM role destroy (see docs/migration/aws-demo-deployment-integration-runbook.md)."
   type        = string
+  default     = null
+
+  validation {
+    # || short-circuits, so length() is never evaluated against null.
+    condition     = var.cloud_readonly_external_id == null || (length(var.cloud_readonly_external_id) >= 2 && length(var.cloud_readonly_external_id) <= 128)
+    error_message = "cloud_readonly_external_id must be null (module skipped) or the exact ExternalId shown by DevFlow when registering the project environment (2-128 characters). An empty string is not a valid ExternalId."
+  }
 }
