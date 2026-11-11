@@ -67,9 +67,9 @@
 
 ## Architecture
 
-![2차 아키텍처](./docs/images/architecture-2nd.png)
+![3차 아키텍처](./docs/images/architecture-3rd.png)
 
-> 위 그림은 2차 프로젝트 기준입니다. 3차 목표 아키텍처는 고도화 계획서에서 갱신합니다.
+> 위 그림은 3차 프로젝트 아키텍쳐 입니다.
 
 ```text
 사용자
