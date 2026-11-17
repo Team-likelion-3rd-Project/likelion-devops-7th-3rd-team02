@@ -88,6 +88,9 @@ Multi-AZ DB Cluster, 기존 계정 DB 데이터 마이그레이션(§F 참조).
 
 ### D1 — Route53 Hosted Zone
 
+- `terraform plan`은 `data.aws_route53_zone.main`(`var.route53_zone_name` =
+  `devflowlab.net`, public) 조회에
+
   실패하면 전체가 중단된다. zone은 **Terraform이 만들지 않고 조회만** 하므로
   신규 계정에 Hosted Zone(ID `Z0319887F0X04JRXN6SW`)이 미리 존재해야 한다.
 - 확인:

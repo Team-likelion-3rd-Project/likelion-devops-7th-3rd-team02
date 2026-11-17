@@ -90,6 +90,8 @@ module "alb_controller_iam" {
   oidc_provider_arn = module.eks.oidc_provider_arn
   oidc_issuer_url   = module.eks.oidc_provider_url
 }
+
+
 # Application ACM 인증서 (devflowlab.net ap-northeast-1, DNS 검증)
 # devflowlab.net 검증 CNAME의 유일한 Terraform owner (create_validation_records 기본 true).
 module "application_acm" {
@@ -203,6 +205,13 @@ module "attachment_storage" {
 
 module "cloud_readonly_iam" {
   source = "../../modules/cloud-readonly-iam"
+
+  # Bootstrap gate: while DevFlow has not issued the ExternalId the variable stays
+  # null and this module is skipped, so the first deployment of the rest of the
+  # infrastructure is not blocked. The trust policy itself is unchanged - with an
+  # ExternalId present the module creates the role exactly as before. Once created,
+  # keep passing the same ExternalId; flipping back to null would destroy the role.
+  count = var.cloud_readonly_external_id == null ? 0 : 1
 
   project_name           = var.project_name
   environment            = var.environment

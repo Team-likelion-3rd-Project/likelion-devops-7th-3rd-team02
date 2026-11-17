@@ -137,7 +137,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "https_only"
+      origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
@@ -146,7 +146,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   default_cache_behavior {
     target_origin_id       = "s3-frontend"
     cached_methods         = ["GET", "HEAD"]
-    viewer_protocol_policy = "redirect-http-to-https"
+    viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     compress               = true
     cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
@@ -168,7 +168,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     path_pattern             = "/api"
     target_origin_id         = "alb-backend"
     cached_methods           = ["GET", "HEAD"]
-    viewer_protocol_policy   = "redirect-http-to-https"
+    viewer_protocol_policy   = "redirect-to-https"
     allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     compress                 = false
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
@@ -179,7 +179,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     path_pattern             = "/api/*"
     target_origin_id         = "alb-backend"
     cached_methods           = ["GET", "HEAD"]
-    viewer_protocol_policy   = "redirect-http-to-https"
+    viewer_protocol_policy   = "redirect-to-https"
     allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     compress                 = false
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
@@ -191,7 +191,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     path_pattern             = "/actuator/health"
     target_origin_id         = "alb-backend"
     cached_methods           = ["GET", "HEAD"]
-    viewer_protocol_policy   = "redirect-http-to-https"
+    viewer_protocol_policy   = "redirect-to-https"
     allowed_methods          = ["GET", "HEAD", "OPTIONS"]
     compress                 = false
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
@@ -203,7 +203,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     path_pattern             = "/oauth2/*"
     target_origin_id         = "alb-backend"
     cached_methods           = ["GET", "HEAD"]
-    viewer_protocol_policy   = "redirect-http-to-https"
+    viewer_protocol_policy   = "redirect-to-https"
     allowed_methods          = ["GET", "HEAD", "OPTIONS"]
     compress                 = false
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
@@ -214,7 +214,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     path_pattern             = "/login/oauth2/*"
     target_origin_id         = "alb-backend"
     cached_methods           = ["GET", "HEAD"]
-    viewer_protocol_policy   = "redirect-http-to-https"
+    viewer_protocol_policy   = "redirect-to-https"
     allowed_methods          = ["GET", "HEAD", "OPTIONS"]
     compress                 = false
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id

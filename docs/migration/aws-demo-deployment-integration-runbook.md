@@ -15,15 +15,20 @@ kubectl config current-context
 
 ## 1. Terraform Plan — Apply 필수 게이트 (전체 Plan, -target 사용 금지)
 
-`terraform/environments/dev` 의 tfvars에 **ExternalId 필수 입력**:
+`terraform/environments/dev` 의 tfvars에 ExternalId 입력:
 
 ```
-cloud_readonly_external_id = "<DevFlow 화면(CL2)이 발급한 ExternalId>"
+cloud_readonly_external_id = null                                  # ExternalId 미발급(최초 배포): Cloud Read-only IAM 모듈만 건너뜀
+cloud_readonly_external_id = "<DevFlow 화면(CL2)이 발급한 ExternalId>"  # ExternalId 확보 후: 모듈 생성
 ```
 
 - 값은 DevFlow `프로젝트 → 클라우드 연결 → 환경 등록` 시 DB(`project_cloud_environments.aws_external_id`)에
   저장되어 화면에 표시되는 값 그대로다. 임의 생성·재사용 금지.
-- 미지정 시 plan이 실패한다. ExternalId 없는 Trust Policy로 대체하지 않는다.
+- **Bootstrap 예외**: DevFlow 미배포로 ExternalId가 아직 없을 때는 `null`(기본값)을 두면
+  `module.cloud_readonly_iam`만 count=0으로 건너뛰고 나머지 인프라(VPC/EKS/RDS/S3/CloudFront/IRSA)는
+  그대로 배포된다. ExternalId 없는 Trust Policy로 대체하는 것은 여전히 금지. 빈 문자열·2자 미만은 validation 실패.
+- **Role이 한 번 생성된 후에는 같은 ExternalId를 계속 제공해야 한다.** `null`로 되돌리면 plan에
+  IAM Role/Policy `destroy`가 잡히므로 그런 destroy가 보이면 즉시 중단하고 보고한다.
 - 이미 다른 프로젝트 환경의 ExternalId로 Role을 만든 경우 재생성하지 않고
   DevFlow에 그 환경을 그대로 등록한다(1 Role = 1 ExternalId; 여러 환경이면 환경별 Role 필요 — FUTURE).
 
