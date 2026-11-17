@@ -5,63 +5,73 @@
 ![Team](https://img.shields.io/badge/Team-team--02-151515?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-151515?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-151515?style=for-the-badge&logo=typescript&logoColor=3178C6)
-![Vite](https://img.shields.io/badge/Vite-151515?style=for-the-badge&logo=vite&logoColor=646CFF)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-151515?style=for-the-badge&logo=tailwindcss&logoColor=06B6D4)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-151515?style=for-the-badge&logo=springboot&logoColor=6DB33F)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-151515?style=for-the-badge&logo=postgresql&logoColor=4169E1)
-![Docker](https://img.shields.io/badge/Docker-151515?style=for-the-badge&logo=docker&logoColor=2496ED)
+![Redis](https://img.shields.io/badge/Redis-151515?style=for-the-badge&logo=redis&logoColor=FF4438)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-151515?style=for-the-badge&logo=kubernetes&logoColor=326CE5)
 ![AWS](https://img.shields.io/badge/AWS-151515?style=for-the-badge&logo=amazonwebservices&logoColor=FF9900)
 ![Terraform](https://img.shields.io/badge/Terraform-151515?style=for-the-badge&logo=terraform&logoColor=844FBA)
-![GitLab](https://img.shields.io/badge/GitLab-151515?style=for-the-badge&logo=gitlab&logoColor=FC6D26)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-151515?style=for-the-badge&logo=githubactions&logoColor=2088FF)
+![Argo CD](https://img.shields.io/badge/Argo_CD-151515?style=for-the-badge&logo=argo&logoColor=EF7B4D)
+![Helm](https://img.shields.io/badge/Helm-151515?style=for-the-badge&logo=helm&logoColor=0F1689)
 ![Prometheus](https://img.shields.io/badge/Prometheus-151515?style=for-the-badge&logo=prometheus&logoColor=E6522C)
 ![Grafana](https://img.shields.io/badge/Grafana-151515?style=for-the-badge&logo=grafana&logoColor=F46800)
 
-> **프로젝트·업무 관리와 빌드·배포·운영 상태를 하나의 흐름으로 연결하는 DevOps 통합 프로젝트 관리 시스템**
+> **프로젝트·업무 관리 화면 안에서 CI/CD, 배포, Kubernetes, 모니터링, 장애 상태까지 함께 보는 DevOps 통합 프로젝트 관리 시스템**
 
-**DevFlow**는 프로젝트와 업무(Task)를 관리하면서 애플리케이션의 빌드·배포·운영 상태까지 함께 확인할 수 있도록 설계한 서비스입니다.
-2차 프로젝트에서는 AWS EKS 위에 애플리케이션을 올리고 GitLab CI/CD, Prometheus, Grafana로 개발부터 배포, 모니터링까지의 흐름을 구성했습니다.
-3차 프로젝트에서는 **DevFlow 화면 안에서 파이프라인·배포·Pod·메트릭 상태가 보이도록** 고도화합니다.
+**DevFlow**는 프로젝트와 업무(Task)를 관리하면서, 관리 대상 서비스의 빌드·배포·운영 상태를 같은 화면에서 확인하도록 만든 서비스입니다.
+2차 프로젝트에서 AWS EKS 위에 기본 기능을 올렸고, 3차 프로젝트에서는 GitHub Actions, Argo CD, Prometheus, Alertmanager, AWS 상태를 DevFlow 화면에 연결하고 온프레미스(kubeadm)와 AWS(EKS) 두 환경에 배포했습니다.
 
-- **배포 주소:** 추후 추가
-- **시연 영상:** 추후 추가
-- **문서 최종 정리일:** `2026-10-11` / **구현 기준일:** `2026-08-12` (2차 프로젝트 기준)
+| 항목 | 내용 |
+|------|------|
+| 서비스 주소 | https://devflowlab.net (최종 시연 기준) |
+| 기간 | 2차 2026.08 / 3차 2026.10.05 ~ 2026.11.13 |
+| 최종 발표 | 2026.11.13 (녹화 시연) |
+| 문서 최종 정리일 | 2026.11.17 |
+
+---
+
+## 2차 → 3차에서 달라진 점
+
+| 영역 | 2차 | 3차 |
+|------|-----|-----|
+| Backend API | 13개 (회원, 프로젝트, 팀원, 업무) | **50개** (검색·페이지, 배포 이력, 장애, 파이프라인, 모니터링, 클라우드 연결, 소셜 로그인, 첨부파일) |
+| CI/CD | Self-managed GitLab + Runner, kubectl 직접 배포 | **GitHub Actions + GHCR**, GitOps 저장소 태그 갱신 → **Argo CD + Helm** |
+| Frontend 배포 | EKS Pod | **S3 + CloudFront** |
+| Database | RDS PostgreSQL | **RDS PostgreSQL Multi-AZ**, Redis 캐시 |
+| 운영 화면 | Grafana에서 따로 확인 | DevFlow 화면에서 파이프라인, 배포, Pod, HPA, 메트릭, 장애 확인 |
+| 환경 | AWS EKS | **온프레미스 kubeadm 3노드 + AWS EKS**, Tailscale로 연결 |
 
 ---
 
 ## 팀 구성
 
-| 이름 | 역할 | 담당 | GitHub |
-|------|------|------|--------|
-| 김석현 | 팀장 / Backend | Spring Boot API, 인증/인가(JWT), PostgreSQL, Project/Task 도메인 | [@alberione1110](https://github.com/alberione1110) |
-| 이주원 | Frontend | React UI, API 연동, 프로젝트/업무 관리 화면 | [@ssac-JW](https://github.com/ssac-JW) |
-| 김민호 | AWS / Kubernetes | Terraform, VPC, EKS, RDS, Kubernetes 리소스 | [@KimMinHo-02](https://github.com/KimMinHo-02) |
-| 최윤재 | CI/CD / Monitoring | Self-managed GitLab, Runner, 파이프라인, Prometheus, Grafana | [@cheesemango1](https://github.com/cheesemango1) |
+| 이름 | 역할 | 3차 담당 | GitHub |
+|------|------|----------|--------|
+| 김석현 | 팀장 / Backend | Spring Boot API 50개, 연동 계층(GitHub Actions, Prometheus, AWS RDS·ALB, Argo CD·Alertmanager Webhook), 프로젝트별 클라우드 연결(AssumeRole), OAuth2, S3 첨부파일, Redis 캐시, 테스트와 배포 후 API 점검 | [@alberione1110](https://github.com/alberione1110) |
+| 이주원 | Frontend | React UI, 파이프라인·배포·장애·모니터링·클라우드 연결 화면 | [@ssac-JW](https://github.com/ssac-JW) |
+| 김민호 | AWS / Kubernetes | Terraform(VPC, EKS, RDS Multi-AZ, CloudFront + S3), Helm, Argo CD GitOps, HPA 검증 | [@KimMinHo-02](https://github.com/KimMinHo-02) |
+| 최윤재 | 온프레미스 / 모니터링 | kubeadm 3노드 클러스터, Tailscale, Prometheus·Alertmanager, 백업·복구 | [@cheesemango1](https://github.com/cheesemango1) |
 
-> 2차 프로젝트와 같은 팀원·역할·주제로 이어서 진행합니다.
-
----
-
-## 빠른 심사 흐름 (5분)
-
-1. 배포된 DevFlow 서비스에 접속합니다.
-2. 테스트 계정으로 로그인합니다. (계정 정보는 시연 시 별도 안내)
-3. 프로젝트를 생성하고 팀원을 등록합니다.
-4. 업무(Task)를 생성하고 담당자와 상태를 지정합니다.
-5. GitLab CI/CD 파이프라인으로 Build / Test / Image / Deploy 과정을 확인합니다.
-6. EKS에 배포된 Frontend / Backend 상태와 HPA 동작을 확인합니다.
-7. Prometheus / Grafana에서 애플리케이션과 클러스터 지표를 확인합니다.
+> 2차 프로젝트와 같은 팀원·주제로 이어서 진행했습니다.
 
 ---
 
-## Core Design
+## 주요 기능
 
-- **Application과 DevOps의 통합** — 프로젝트 관리 애플리케이션과 실제 배포·운영 환경을 하나의 프로젝트 안에서 구성합니다.
-- **Infrastructure as Code** — AWS 인프라는 Terraform 모듈로 관리하고, 같은 코드로 환경을 재현할 수 있게 합니다.
-- **Container First** — Frontend와 Backend를 Docker 이미지로 만들고 Kubernetes에서 실행합니다.
-- **CI/CD Automation** — 코드 변경부터 Build, Test, Image Build, Deploy, Health Check, Rollback까지 파이프라인으로 자동화합니다.
-- **Observability** — Spring Boot Actuator, Prometheus, Grafana로 애플리케이션과 Kubernetes 상태를 관측합니다.
-- **Availability & Scalability** — Liveness/Readiness Probe와 HPA로 장애를 감지하고 트래픽 변화에 대응합니다.
+| 기능 | 설명 |
+|------|------|
+| 회원·인증 | 회원가입, 로그인(JWT), GitHub·Google 소셜 로그인(1회용 code 교환) |
+| 프로젝트·팀원 | 프로젝트 생성 시 생성자 OWNER 등록, OWNER만 팀원 등록, 멤버만 업무 접근 |
+| 업무(Task) | 생성·수정·삭제, 상태와 담당자 변경, 검색·필터·정렬·페이지, 첨부파일(S3 Presigned URL) |
+| CI/CD | GitHub Actions 파이프라인 단계별 상태 (Step 실행 결과 기준) |
+| 배포 | Argo CD 배포 Webhook으로 배포 이력 기록 |
+| Kubernetes | Deployment, Pod, Node, HPA 상태 |
+| 모니터링 | Prometheus 기반 요청 수, 오류율, p95 응답 시간, CPU·메모리 요약과 추이 |
+| 장애 | Alertmanager Webhook으로 장애 자동 생성, 확인·담당자 지정·해결, 종료 알림 후 자동 해결 |
+| 클라우드 연결 | 프로젝트별 AWS 연결 (AssumeRole + ExternalId, Access Key 저장 없음), RDS·ALB 상태 |
+
+API 전체 목록과 요청/응답 형식은 Wiki > [Backend API 구현 목록](https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02/wiki/Backend-API-구현-목록)을 따릅니다.
 
 ---
 
@@ -69,47 +79,54 @@
 
 ![3차 아키텍처](./docs/images/architecture-3rd.png)
 
-> 위 그림은 3차 프로젝트 아키텍쳐 입니다.
+**서비스 요청 흐름 (AWS)**
 
 ```text
-사용자
-  -> Route 53 -> ALB (Ingress)
-  -> Frontend Pods (React, Nginx) / Backend Pods (Spring Boot)  @ Amazon EKS
-  -> PostgreSQL (Amazon RDS)
-
-개발자
-  -> GitHub -> Self-managed GitLab -> GitLab Runner
-  -> Build / Test / Image Build / Registry Push / Deploy / Health Check
-  -> Amazon EKS -> Prometheus -> Grafana
+사용자 -> Route 53 (devflowlab.net) -> CloudFront
+  ├─ /                -> S3 (React Frontend)
+  └─ /api/*, /oauth2/* -> ALB -> Amazon EKS (Spring Boot Backend)
+                              ├─ RDS PostgreSQL (Multi-AZ)
+                              ├─ Redis (캐시)
+                              └─ S3 첨부파일 (IRSA)
 ```
+
+**배포 흐름**
+
+```text
+개발자 -> GitHub (develop)
+  -> GitHub Actions: Test / Build / Image Push (GHCR)
+  -> GitOps 저장소 이미지 태그 갱신
+  -> Argo CD Sync (Helm) -> Amazon EKS
+  -> Argo CD 배포 Webhook -> DevFlow 배포 이력
+Frontend: GitHub Actions -> S3 업로드 + CloudFront 캐시 무효화 (OIDC 임시 자격 증명)
+```
+
+**온프레미스 (dev)**: VirtualBox VM 3대(Control Plane 1, Worker 2), kubeadm, Calico, Traefik, Argo CD + Kustomize, Prometheus·Alertmanager. Tailscale로 AWS DevFlow와 연결해 온프렘 장애도 AWS 화면에서 확인합니다.
 
 | 영역 | 기술 |
 |------|------|
 | Frontend | React, TypeScript, Vite, Tailwind CSS |
-| Backend | Java 21, Spring Boot 3.5, Gradle, Spring Data JPA |
-| Database | PostgreSQL (Amazon RDS) |
-| 인증 | Spring Security, JWT |
-| API 문서 | Swagger / OpenAPI |
-| Infra | AWS (VPC, EKS, RDS, ALB, Route 53, ACM), Terraform |
-| CI/CD | Self-managed GitLab, GitLab Runner, GitLab Container Registry |
-| Monitoring | Spring Boot Actuator, Metrics Server, Prometheus, Grafana |
-| 가용성 | Liveness / Readiness Probe, HPA |
+| Backend | Java 21, Spring Boot 3.5, Spring Data JPA, Spring Security(JWT, OAuth2), Flyway, AWS SDK |
+| Database | PostgreSQL (Amazon RDS Multi-AZ), Redis |
+| Infra | AWS (VPC, EKS, RDS, ALB, S3, CloudFront, Route 53, ACM), Terraform, Tailscale |
+| CI/CD | GitHub Actions, GHCR, Argo CD, Helm, Kustomize |
+| Monitoring | Spring Boot Actuator, Prometheus, Alertmanager, Grafana |
+| 품질·보안 | JUnit, WireMock, k6, Trivy, Swagger / OpenAPI |
 
 ---
 
-## 주요 기능
+## 검증 결과
 
-| 기능 | 설명 | 로그인 필요 |
-|------|------|------------|
-| 회원가입 | 새 사용자 계정을 생성합니다. | X |
-| 로그인 | 사용자 인증 후 JWT Access Token을 발급합니다. | X |
-| 내 정보 조회 | 로그인한 사용자의 정보를 조회합니다. | O |
-| 프로젝트 생성·조회 | 프로젝트를 만들고 참여 중인 프로젝트를 조회합니다. | O |
-| 프로젝트 팀원 관리 | 프로젝트에 팀원을 등록하고 조회합니다. | O |
-| 업무(Task) 관리 | 업무를 생성·조회하고 상태와 담당자를 변경합니다. | O |
+| 항목 | 결과 | 근거 |
+|------|------|------|
+| Backend 테스트 | 단위 테스트 104개 + Compose 통합 테스트 22단계 | CI `Compose Up & API Flow` |
+| AWS 배포 후 API 점검 | 첫 실행 48개 중 46개 통과. 실패 2건(첨부 S3 미적용, 주체 ARN 누락)은 GitOps 값 수정 후 해결 | `scripts/aws-api-check.mjs` · Wiki [Backend 배포 설정](https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02/wiki/Backend-배포-설정) |
+| Redis 장애 시 모니터링 요약 | p95 10,300ms → 1,010ms(전환 직후) / 392ms(반복) | PR #44, #47 · Wiki [성능 테스트](https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02/wiki/성능-테스트) |
+| 온프렘 장애 → AWS DevFlow | 장애 주입부터 복구 확인까지 5분 39초 (전체 검증 구간, 알림 전송 지연 아님) | Wiki [장애 시나리오](https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02/wiki/장애-시나리오) |
+| EKS HPA | 실제 API 부하에서 2 → 4 확장, 부하 종료 후 4 → 2 축소 | [Kubernetes 테스트](./docs/kubernetes-test.md) |
+| 이미지 취약점 | Spring Boot 3.5.4 → 3.5.16, Trivy CRITICAL 10 → 6건 | PR #56 · [이미지 스캔](./docs/security/image-scanning.md) |
 
-주요 화면: 로그인 / 프로젝트 목록 / 프로젝트 상세 / 업무 보드
-API 상세 경로와 요청/응답 구조는 Wiki > API Specification 을 따릅니다.
+**실행하지 못한 항목**: k6 `load`·`spike`·`hpa` 프로필은 스크립트와 목표만 작성했고 실측하지 못했습니다(CI에서는 `smoke`만 실행). 자세한 내용은 Wiki [성능 테스트](https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02/wiki/성능-테스트)에 남겨 두었습니다.
 
 ---
 
@@ -117,67 +134,46 @@ API 상세 경로와 요청/응답 구조는 Wiki > API Specification 을 따릅
 
 ```text
 .
-├── backend/        Spring Boot API (Java 21, Gradle)
-├── frontend/       React + TypeScript + Vite
-├── k8s/            Kubernetes 매니페스트 (backend, frontend, ingress, rbac, monitoring, controllers)
-├── terraform/      AWS 인프라 (modules/, environments/dev)
-├── monitoring/     Grafana 대시보드
-├── scripts/        deploy / health-check / rollback 스크립트 (GitLab CI에서 사용)
-├── postman/        Backend API 통합 테스트 컬렉션
-├── docs/           설계 문서, 협업 가이드, 이관 기록
-└── .gitlab-ci.yml  GitLab CI/CD 파이프라인
+├── backend/            Spring Boot API (Java 21, Gradle, Flyway)
+├── frontend/           React + TypeScript + Vite
+├── helm/               DevFlow Helm Chart, 모니터링 Chart
+├── gitops/             GitOps 저장소 seed (Argo CD Application)
+├── k8s/                Kubernetes 매니페스트 (2차 EKS 매니페스트, 컨트롤러, 온프렘 bootstrap·overlay)
+├── terraform/          AWS 인프라 (modules/, environments/)
+├── monitoring/         Grafana 대시보드
+├── scripts/            GitOps 릴리스·롤백, Frontend S3 배포, 배포 후 API 점검, k6 부하 테스트
+├── postman/            Backend API 통합 테스트 컬렉션
+├── docs/               설계 문서, 이관 기록, 런북, 검증 기록
+├── .github/workflows/  CI, 이미지 빌드, 릴리스·롤백, Frontend 배포
+└── .gitlab-ci.yml      2차 GitLab 파이프라인 (기록용, 3차에서는 사용하지 않음)
 ```
 
 ---
 
 ## Documentation
 
-상세 설계·회의 기록은 **GitHub Wiki** 에서 관리합니다.
+상세 설계·운영 기록은 **[GitHub Wiki](https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02/wiki)** 에서 관리합니다.
 
 | 카테고리 | 문서 |
 |----------|------|
-| **Start Here** | 프로젝트 개요 · 기능/비기능 요구사항 · UI Screens |
-| **Architecture** | System Architecture · ERD · API Specification |
-| **DevOps** | CI/CD 파이프라인 · 모니터링 구성 · 배포 가이드 |
-| **Operations** | 장애 시나리오 · 성능 테스트 · 회의록 · 트러블슈팅 |
+| **Architecture** | System Architecture · ON1 온프레미스 설계 · ERD · API Specification · Backend API 구현 목록 |
+| **운영** | 배포 가이드 · 배포 절차 · Backend 배포 설정 · 장애 시나리오 · 성능 테스트 · 트러블슈팅 |
 
 저장소 안의 문서:
 [AWS·Kubernetes 설계](./docs/architecture.md) ·
 [Terraform 아키텍처](./terraform/docs/architecture.md) ·
-[Kubernetes 리소스 목록](./docs/kubernetes_resource_list.md) ·
 [Kubernetes 테스트](./docs/kubernetes-test.md) ·
-[모니터링](./monitoring/README.md) ·
-[Backend](./backend/README.md) ·
+[GitLab → GitHub Actions 이관](./docs/migration/gitlab-to-github-actions.md) ·
+[관측 런북](./docs/migration/observability-runbook.md) ·
+[이미지 스캔](./docs/security/image-scanning.md) ·
 [2차 → 3차 이관 기록](./docs/migration/2nd-to-3rd.md)
 
 ---
 
-## 범위 경계
+## 범위와 한계
 
-**2차까지 제공:**
-
-- 회원가입 / 로그인, JWT 기반 인증·인가
-- 프로젝트 생성·조회, 팀원 등록·조회
-- 업무(Task) 생성·관리, 담당자·상태 관리
-- Terraform 기반 AWS 인프라(VPC, EKS, RDS, ALB, Route 53, ACM)
-- GitLab CI/CD 파이프라인(Build, Test, Image, Deploy, Health Check, Rollback)
-- Prometheus / Grafana 모니터링, Liveness / Readiness Probe, HPA
-
-**3차 고도화 대상:**
-
-- CI/CD 파이프라인 상태를 DevFlow 화면에서 시각화
-- 배포 이력 조회
-- Kubernetes Pod / Deployment 상태를 서비스 안에서 시각화
-- 모니터링 데이터를 프로젝트 화면과 연계
-- 프로젝트·업무 검색 / 필터 / 페이지네이션
-- 운영 및 장애 대응 기능
-
-**현재 미제공:**
-
-- prod 환경 — 3차에서 필요성 검토 후 결정
-- 실제 사용자 대상 운영 — 교육용 프로젝트로 시연 환경만 운영
-
-**배포 단계:** `dev` → **`demo` (현재)** → `prod` (3차에서 검토)
+- **구현하지 않은 항목**: 프로젝트 수정·삭제, 팀원 제거·역할 변경, 토큰 갱신·로그아웃, GitHub 이슈·PR 연동, GitLab 연결, 비용 조회 ([범위 결정](https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02/wiki/Backend-API-구현-목록))
+- **운영 범위**: 교육용 프로젝트로, 실제 사용자 대상 운영은 하지 않았습니다. AWS 환경은 최종 시연용입니다.
 
 ---
 
@@ -185,11 +181,11 @@ API 상세 경로와 요청/응답 구조는 Wiki > API Specification 을 따릅
 
 이 저장소는 공개 저장소입니다. 다음 정보를 절대 포함하지 않습니다.
 
-- AWS Access Key, GitLab Token, JWT Secret, `.env` 실제 값, 인증서·키 파일
+- AWS Access Key, GitHub Token, JWT Secret, `.env` 실제 값, 인증서·키 파일
 - 실제 사용자 개인정보, 운영 DB 계정 정보
 - 내부 인프라 식별자 및 서버 직접 접근 URL
 
-환경별 비밀값은 GitLab CI/CD Variables와 Kubernetes Secret으로 주입합니다.
+비밀값은 GitHub Actions Secrets/Variables와 Kubernetes Secret으로 주입합니다. AWS 접근은 장기 Access Key 대신 GitHub Actions OIDC, IRSA, AssumeRole을 사용합니다.
 비밀값이 실수로 커밋되면 GitHub이 push를 차단합니다. 이미 커밋된 경우 **즉시 해당 키를 폐기하고 재발급**하세요. 커밋을 되돌리는 것만으로는 이력에 남습니다.
 
 ---
