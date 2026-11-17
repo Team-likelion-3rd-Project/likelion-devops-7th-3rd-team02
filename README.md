@@ -24,7 +24,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 서비스 주소 | https://devflowlab.net (최종 시연 기준) |
+| 서비스 주소 | https://devflowlab.net (최종 시연 당시 주소, 현재 운영 종료) |
 | 기간 | 2차 2026.08 / 3차 2026.10.05 ~ 2026.11.13 |
 | 최종 발표 | 2026.11.13 (녹화 시연) |
 | 문서 최종 정리일 | 2026.11.17 |
@@ -48,12 +48,12 @@
 
 | 이름 | 역할 | 3차 담당 | GitHub |
 |------|------|----------|--------|
-| 김석현 | 팀장 / Backend | Spring Boot API 50개, 연동 계층(GitHub Actions, Prometheus, AWS RDS·ALB, Argo CD·Alertmanager Webhook), 프로젝트별 클라우드 연결(AssumeRole), OAuth2, S3 첨부파일, Redis 캐시, 테스트와 배포 후 API 점검 | [@alberione1110](https://github.com/alberione1110) |
+| 김석현 | 팀장 / Backend | Spring Boot API 50개, 연동 계층(GitHub Actions, Prometheus, AWS RDS·ALB, Argo CD·Alertmanager Webhook), 프로젝트별 클라우드 연결(AssumeRole), OAuth2, S3 첨부파일, Redis 캐시, GitHub Actions 워크플로 수정(#75, #88), 테스트와 배포 후 API 점검 | [@alberione1110](https://github.com/alberione1110) |
 | 이주원 | Frontend | React UI, 파이프라인·배포·장애·모니터링·클라우드 연결 화면 | [@ssac-JW](https://github.com/ssac-JW) |
 | 김민호 | AWS / Kubernetes | Terraform(VPC, EKS, RDS Multi-AZ, CloudFront + S3), Helm, Argo CD GitOps, HPA 검증 | [@KimMinHo-02](https://github.com/KimMinHo-02) |
 | 최윤재 | 온프레미스 / 모니터링 | kubeadm 3노드 클러스터, Tailscale, Prometheus·Alertmanager, 백업·복구 | [@cheesemango1](https://github.com/cheesemango1) |
 
-> 2차 프로젝트와 같은 팀원·주제로 이어서 진행했습니다.
+> 2차 프로젝트와 같은 팀원·주제로 이어서 진행했습니다. 위 표는 주 담당이며, 클라우드와 CI/CD 구조는 팀 전체가 함께 설계·논의했고 PR 리뷰는 Frontend·Backend를 포함한 전 파트가 참여했습니다.
 
 ---
 
@@ -173,7 +173,7 @@ Frontend: GitHub Actions -> S3 업로드 + CloudFront 캐시 무효화 (OIDC 임
 ## 범위와 한계
 
 - **구현하지 않은 항목**: 프로젝트 수정·삭제, 팀원 제거·역할 변경, 토큰 갱신·로그아웃, GitHub 이슈·PR 연동, GitLab 연결, 비용 조회 ([범위 결정](https://github.com/Team-likelion-3rd-Project/likelion-devops-7th-3rd-team02/wiki/Backend-API-구현-목록))
-- **운영 범위**: 교육용 프로젝트로, 실제 사용자 대상 운영은 하지 않았습니다. AWS 환경은 최종 시연용입니다.
+- **운영 범위**: 교육용 프로젝트로, 실제 사용자 대상 운영은 하지 않았습니다. AWS 환경은 2026.11.13 최종 시연 후 비용 정리를 위해 종료했으며, 로컬 실행은 아래 방법으로 확인할 수 있습니다.
 
 ---
 
